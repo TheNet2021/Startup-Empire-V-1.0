@@ -31,21 +31,31 @@ object SoundManager {
     private var soundHireId: Int = 0
     private var soundLaunchId: Int = 0
 
+    val TRACK_NAMES = listOf(
+        "Lo-Fi Silicon Chill",
+        "Neon Synthwave",
+        "Coffee Break Acoustic"
+    )
+
     private var musicVolume: Float = 0.65f
     private var sfxVolume: Float = 0.85f
     private var isMusicEnabled: Boolean = true
     private var isSfxEnabled: Boolean = true
+    private var currentTrackIndex: Int = 0
+    private var appContext: Context? = null
 
     fun initialize(context: Context, settings: GameSettings) {
-        if (isInitialized) {
-            updateSettings(settings)
-            return
-        }
-
+        appContext = context.applicationContext
         musicVolume = settings.musicVolume
         sfxVolume = settings.sfxVolume
         isMusicEnabled = settings.isMusicEnabled
         isSfxEnabled = settings.isSfxEnabled
+        currentTrackIndex = settings.selectedMusicTrack.coerceIn(0, TRACK_NAMES.size - 1)
+
+        if (isInitialized) {
+            updateSettings(settings)
+            return
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -71,9 +81,15 @@ object SoundManager {
                 val launchFile = File(audioDir, "sfx_launch.wav")
                 if (!launchFile.exists()) launchFile.writeBytes(generateLaunchWav())
 
-                // 2. Synthesize ambient Lo-Fi BGM WAV file
-                val bgmFile = File(audioDir, "bgm_ambient.wav")
-                if (!bgmFile.exists()) bgmFile.writeBytes(generateAmbientBgmWav())
+                // 2. Synthesize ambient multi-track BGM WAV files
+                val bgmFile0 = File(audioDir, "bgm_track_0.wav")
+                if (!bgmFile0.exists()) bgmFile0.writeBytes(generateLoFiBgmWav())
+
+                val bgmFile1 = File(audioDir, "bgm_track_1.wav")
+                if (!bgmFile1.exists()) bgmFile1.writeBytes(generateSynthwaveBgmWav())
+
+                val bgmFile2 = File(audioDir, "bgm_track_2.wav")
+                if (!bgmFile2.exists()) bgmFile2.writeBytes(generateAcousticBgmWav())
 
                 // 3. Setup SoundPool
                 val attrs = AudioAttributes.Builder()
@@ -93,50 +109,92 @@ object SoundManager {
                         soundLaunchId = load(launchFile.absolutePath, 1)
                     }
 
-                // 4. Setup MediaPlayer for background music
-                mediaPlayer = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_GAME)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                            .build()
-                    )
-                    setDataSource(context, Uri.fromFile(bgmFile))
-                    isLooping = true
-                    prepare()
-                    val actualVol = if (isMusicEnabled) musicVolume else 0f
-                    setVolume(actualVol, actualVol)
-                    if (isMusicEnabled) {
-                        start()
-                    }
+                // 4. Setup MediaPlayer for background music with selected track
+                val activeBgmFile = when (currentTrackIndex) {
+                    1 -> bgmFile1
+                    2 -> bgmFile2
+                    else -> bgmFile0
                 }
 
+                loadAndPlayTrackFile(context, activeBgmFile)
+
                 isInitialized = true
-                Log.d(TAG, "SoundManager initialized successfully with synthesized audio assets.")
+                Log.d(TAG, "SoundManager initialized successfully with synthesized multi-track audio.")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize SoundManager", e)
             }
         }
     }
 
+    private fun loadAndPlayTrackFile(context: Context, file: File) {
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(context, Uri.fromFile(file))
+                isLooping = true
+                prepare()
+                val actualVol = if (isMusicEnabled) musicVolume else 0f
+                setVolume(actualVol, actualVol)
+                if (isMusicEnabled) {
+                    start()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to play BGM file ${file.name}", e)
+        }
+    }
+
+    fun switchTrack(trackIndex: Int) {
+        val idx = trackIndex.coerceIn(0, TRACK_NAMES.size - 1)
+        if (currentTrackIndex == idx && mediaPlayer != null) return
+        currentTrackIndex = idx
+        val ctx = appContext ?: return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val audioDir = File(ctx.cacheDir, "audio_assets")
+            val targetFile = File(audioDir, "bgm_track_$idx.wav")
+            if (!targetFile.exists()) {
+                val wavBytes = when (idx) {
+                    1 -> generateSynthwaveBgmWav()
+                    2 -> generateAcousticBgmWav()
+                    else -> generateLoFiBgmWav()
+                }
+                targetFile.writeBytes(wavBytes)
+            }
+            loadAndPlayTrackFile(ctx, targetFile)
+        }
+    }
+
     fun updateSettings(settings: GameSettings) {
+        val trackChanged = currentTrackIndex != settings.selectedMusicTrack
         musicVolume = settings.musicVolume
         sfxVolume = settings.sfxVolume
         isMusicEnabled = settings.isMusicEnabled
         isSfxEnabled = settings.isSfxEnabled
 
-        try {
-            mediaPlayer?.let { player ->
-                val actualVol = if (isMusicEnabled) musicVolume else 0f
-                player.setVolume(actualVol, actualVol)
-                if (isMusicEnabled && !player.isPlaying) {
-                    player.start()
-                } else if (!isMusicEnabled && player.isPlaying) {
-                    player.pause()
+        if (trackChanged) {
+            switchTrack(settings.selectedMusicTrack)
+        } else {
+            try {
+                mediaPlayer?.let { player ->
+                    val actualVol = if (isMusicEnabled) musicVolume else 0f
+                    player.setVolume(actualVol, actualVol)
+                    if (isMusicEnabled && !player.isPlaying) {
+                        player.start()
+                    } else if (!isMusicEnabled && player.isPlaying) {
+                        player.pause()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating music settings", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating music settings", e)
         }
     }
 
@@ -342,8 +400,8 @@ object SoundManager {
         return createWavBytes(samples)
     }
 
-    // 12-second peaceful ambient Lo-Fi tech loop (Cmaj7 -> Am7 -> Fmaj7 -> Gsus4)
-    private fun generateAmbientBgmWav(): ByteArray {
+    // Track 0: 12-second peaceful ambient Lo-Fi tech loop (Cmaj7 -> Am7 -> Fmaj7 -> Gsus4)
+    private fun generateLoFiBgmWav(): ByteArray {
         val durationSec = 12.0
         val numSamples = (SAMPLE_RATE * durationSec).toInt()
         val samples = ShortArray(numSamples)
@@ -368,7 +426,6 @@ object SoundManager {
             val chordEnv = (1.0 - exp(-localT * 6.0)) * exp(-localT * 0.9)
             var chordWave = 0.0
             for ((idx, freq) in currentChord.withIndex()) {
-                // gentle arpeggio offset
                 val arpOffset = idx * 0.12
                 val noteEnv = if (localT >= arpOffset) {
                     val nt = localT - arpOffset
@@ -390,7 +447,95 @@ object SoundManager {
             val bellWave = sin(2.0 * Math.PI * bellFreq * t) * bellEnv
 
             val mix = (chordWave * 0.4 + bassWave + bellWave) * 0.55
-            // Soft master volume ceiling
+            samples[i] = (mix * 18000.0).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return createWavBytes(samples)
+    }
+
+    // Track 1: 8-second upbeat retro Synthwave tycoon pulse (Dm -> Bb -> F -> C)
+    private fun generateSynthwaveBgmWav(): ByteArray {
+        val durationSec = 8.0
+        val numSamples = (SAMPLE_RATE * durationSec).toInt()
+        val samples = ShortArray(numSamples)
+
+        val chords = listOf(
+            doubleArrayOf(293.66, 349.23, 440.00), // Dm (D4, F4, A4)
+            doubleArrayOf(233.08, 293.66, 349.23), // Bb (Bb3, D4, F4)
+            doubleArrayOf(174.61, 220.00, 261.63), // F (F3, A3, C4)
+            doubleArrayOf(196.00, 246.94, 293.66)  // G (G3, B3, D4)
+        )
+        val bassNotes = doubleArrayOf(73.42, 58.27, 43.65, 49.00) // D2, Bb1, F1, G1
+        val chordDuration = 2.0 // 2 seconds per chord
+        val beatDuration = 0.25 // 16th note rhythm pulse
+
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val chordIdx = ((t / chordDuration).toInt()) % chords.size
+            val localT = t % chordDuration
+            val currentChord = chords[chordIdx]
+            val bassFreq = bassNotes[chordIdx]
+
+            // Arpeggiated synthesizer lead
+            val step = ((t / 0.125).toInt()) % currentChord.size
+            val leadFreq = currentChord[step] * 2.0
+            val leadSubT = (t % 0.125)
+            val leadEnv = exp(-leadSubT * 25.0)
+            val leadWave = (sin(2.0 * Math.PI * leadFreq * t) + 0.3 * sin(4.0 * Math.PI * leadFreq * t)) * leadEnv
+
+            // Driving bass synth with pulse attack
+            val bassSubT = t % beatDuration
+            val bassEnv = exp(-bassSubT * 14.0)
+            val bassWave = (sin(2.0 * Math.PI * bassFreq * t) + 0.4 * sin(4.0 * Math.PI * bassFreq * t)) * bassEnv
+
+            // Warm background pad
+            val padEnv = (1.0 - exp(-localT * 4.0)) * 0.35
+            var padWave = 0.0
+            for (f in currentChord) {
+                padWave += sin(2.0 * Math.PI * f * t)
+            }
+
+            val mix = (leadWave * 0.4 + bassWave * 0.6 + padWave * 0.25) * 0.60
+            samples[i] = (mix * 18000.0).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return createWavBytes(samples)
+    }
+
+    // Track 2: 10-second warm acoustic coffee break fingerstyle (G -> Em -> C -> D)
+    private fun generateAcousticBgmWav(): ByteArray {
+        val durationSec = 10.0
+        val numSamples = (SAMPLE_RATE * durationSec).toInt()
+        val samples = ShortArray(numSamples)
+
+        val chords = listOf(
+            doubleArrayOf(196.00, 246.94, 293.66, 392.00), // G (G3, B3, D4, G4)
+            doubleArrayOf(164.81, 246.94, 329.63, 392.00), // Em (E3, B3, E4, G4)
+            doubleArrayOf(130.81, 261.63, 329.63, 392.00), // C (C3, C4, E4, G4)
+            doubleArrayOf(146.83, 220.00, 293.66, 369.99)  // D (D3, A3, D4, F#4)
+        )
+        val chordDuration = 2.5 // 2.5 seconds per chord
+
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val chordIdx = ((t / chordDuration).toInt()) % chords.size
+            val localT = t % chordDuration
+            val currentChord = chords[chordIdx]
+
+            // Fingerpicking pluck pattern: Root, 2nd string, 3rd string, 4th string
+            val pluckIdx = ((localT / 0.3125).toInt()) % 4
+            val pluckSubT = localT % 0.3125
+            val stringFreq = currentChord[pluckIdx]
+
+            // Acoustic string plucked envelope (fast attack, natural exponential decay + body resonance)
+            val pluckEnv = exp(-pluckSubT * 12.0)
+            val harmonic1 = sin(2.0 * Math.PI * stringFreq * t)
+            val harmonic2 = 0.4 * sin(4.0 * Math.PI * stringFreq * t)
+            val harmonic3 = 0.15 * sin(6.0 * Math.PI * stringFreq * t)
+            val acousticPluck = (harmonic1 + harmonic2 + harmonic3) * pluckEnv
+
+            // Warm acoustic body drone
+            val bodyDrone = sin(2.0 * Math.PI * currentChord[0] * 0.5 * t) * 0.25 * (1.0 - exp(-localT * 3.0))
+
+            val mix = (acousticPluck * 0.75 + bodyDrone * 0.3) * 0.65
             samples[i] = (mix * 18000.0).toInt().coerceIn(-32767, 32767).toShort()
         }
         return createWavBytes(samples)

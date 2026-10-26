@@ -17,6 +17,7 @@ object GameStorage {
     private const val KEY_MUSIC_ENABLED = "music_enabled"
     private const val KEY_SFX_ENABLED = "sfx_enabled"
     private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
+    private const val KEY_SELECTED_TRACK = "selected_music_track"
 
     private val moshi: Moshi by lazy {
         Moshi.Builder()
@@ -128,6 +129,7 @@ object GameStorage {
             .putBoolean(KEY_MUSIC_ENABLED, settings.isMusicEnabled)
             .putBoolean(KEY_SFX_ENABLED, settings.isSfxEnabled)
             .putBoolean(KEY_HAPTICS_ENABLED, settings.isHapticsEnabled)
+            .putInt(KEY_SELECTED_TRACK, settings.selectedMusicTrack)
             .apply()
     }
 
@@ -138,7 +140,8 @@ object GameStorage {
             sfxVolume = prefs.getFloat(KEY_SFX_VOL, 0.85f),
             isMusicEnabled = prefs.getBoolean(KEY_MUSIC_ENABLED, true),
             isSfxEnabled = prefs.getBoolean(KEY_SFX_ENABLED, true),
-            isHapticsEnabled = prefs.getBoolean(KEY_HAPTICS_ENABLED, true)
+            isHapticsEnabled = prefs.getBoolean(KEY_HAPTICS_ENABLED, true),
+            selectedMusicTrack = prefs.getInt(KEY_SELECTED_TRACK, 0)
         )
     }
 }

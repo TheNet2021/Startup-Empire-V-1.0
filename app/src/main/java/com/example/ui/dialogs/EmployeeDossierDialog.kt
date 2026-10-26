@@ -31,6 +31,7 @@ fun EmployeeDossierDialog(
     onTrain: (Employee) -> Unit,
     onRaiseSalary: (Employee) -> Unit,
     onSendRetreat: (Employee) -> Unit,
+    onPromote: (Employee) -> Unit = {},
     onFire: (Employee) -> Unit
 ) {
     var showConfirmFire by remember { mutableStateOf(false) }
@@ -79,6 +80,7 @@ fun EmployeeDossierDialog(
                                 EmployeeRole.MARKETER -> Icons.Default.Campaign
                                 EmployeeRole.SYSADMIN -> Icons.Default.Dns
                                 EmployeeRole.PROJECT_MANAGER -> Icons.Default.Groups
+                                EmployeeRole.SALES -> Icons.Default.TrendingUp
                             },
                             contentDescription = null,
                             tint = Color.White,
@@ -233,6 +235,28 @@ fun EmployeeDossierDialog(
                         Icon(Icons.Default.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("+15% Pay", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (employee.isPromotable) {
+                    Button(
+                        onClick = { onPromote(employee) },
+                        enabled = cash >= employee.promotionCost,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_promote_employee"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "Promote to Level ${employee.level + 1} ($%,.0f Bonus)".format(employee.promotionCost),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
                     }
                 }
 

@@ -41,6 +41,12 @@ enum class EmployeeRole(
         primarySkill = "Management",
         description = "Coordinates sprints and boosts team productivity.",
         baseSalary = 140.0
+    ),
+    SALES(
+        title = "Enterprise Sales",
+        primarySkill = "Sales",
+        description = "Closes high-value corporate deals and enterprise contracts.",
+        baseSalary = 115.0
     )
 }
 
@@ -80,6 +86,10 @@ data class Employee(
     }
 
     val hiringCost: Double get() = (dailySalary * 2.5 + (level * 150.0)).coerceAtLeast(250.0)
+
+    val promotionCost: Double get() = (dailySalary * 3.0 + (level * 250.0)).coerceAtLeast(450.0)
+
+    val isPromotable: Boolean get() = level < 5
 
     val effectiveProductivity: Float get() {
         val moraleFactor = (morale / 100f).coerceIn(0.2f, 1.3f)

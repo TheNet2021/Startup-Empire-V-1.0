@@ -369,6 +369,7 @@ fun StartupEmpireGameScreen(
                                     onFireEmployee = { emp -> viewModel.fireEmployee(emp) },
                                     onRaiseSalary = { emp -> viewModel.raiseSalary(emp) },
                                     onTrainEmployee = { emp -> viewModel.trainEmployee(emp) },
+                                    onPromoteEmployee = { emp -> viewModel.promoteEmployee(emp) },
                                     onSendOnRetreat = { emp -> viewModel.sendOnRetreat(emp) },
                                     onAssignProduct = { emp, pId -> viewModel.assignProduct(emp, pId) },
                                     onAssignContract = { emp, cId -> viewModel.assignStaffToContract(emp.id, cId) },
@@ -384,8 +385,11 @@ fun StartupEmpireGameScreen(
                                     onSetSprintMode = { prod, mode -> viewModel.setSprintMode(prod, mode) },
                                     onStartProductUpdate = { prod -> viewModel.startProductUpdate(prod) },
                                     onToggleMaintenance = { prod -> viewModel.toggleProductMaintenance(prod.id) },
+                                    onConductMarketResearch = { prod -> viewModel.conductMarketResearch(prod) },
+                                    onStartFeatureDevelopment = { pId, fId -> viewModel.startFeatureDevelopment(pId, fId) },
                                     onAcceptContract = { cId -> viewModel.acceptContract(cId) },
-                                    onCancelContract = { cId -> viewModel.cancelContract(cId) }
+                                    onCancelContract = { cId -> viewModel.cancelContract(cId) },
+                                    onDeliverContract = { cId -> viewModel.deliverContract(cId) }
                                 )
                                 GameTab.SERVERS -> ServersTab(
                                     state = state,
@@ -399,7 +403,8 @@ fun StartupEmpireGameScreen(
                                     onTakeLoan = { amount, days, dailyPayment, lender -> viewModel.takeLoan(amount, days, dailyPayment, lender) },
                                     onRepayLoanEarly = { loan -> viewModel.repayLoanEarly(loan) },
                                     onStartResearch = { tech -> viewModel.startResearch(tech) },
-                                    onAcquireCompetitor = { compId -> viewModel.acquireCompetitor(compId) }
+                                    onAcquireCompetitor = { compId -> viewModel.acquireCompetitor(compId) },
+                                    onSellEquity = { pct -> viewModel.sellEquityForCapital(pct) }
                                 )
                             }
                         }
@@ -444,6 +449,10 @@ fun StartupEmpireGameScreen(
             },
             onSendRetreat = {
                 viewModel.sendOnRetreat(it)
+                inspectedEmployee = viewModel.gameState.value.employees.find { e -> e.id == it.id }
+            },
+            onPromote = {
+                viewModel.promoteEmployee(it)
                 inspectedEmployee = viewModel.gameState.value.employees.find { e -> e.id == it.id }
             },
             onFire = {

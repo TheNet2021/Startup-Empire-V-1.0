@@ -220,6 +220,39 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         saveGameInternal()
     }
 
+    fun promoteEmployee(employee: Employee) {
+        val state = _gameState.value
+        if (!employee.isPromotable) {
+            showToast("${employee.name} has already reached the maximum tier (${employee.levelTitle})!")
+            return
+        }
+        if (state.cash < employee.promotionCost) {
+            showToast("Insufficient funds! Promotion bonus costs $%,.0f.".format(employee.promotionCost))
+            return
+        }
+        val nextLevel = employee.level + 1
+        val updatedEmployees = state.employees.map {
+            if (it.id == employee.id) {
+                it.copy(
+                    level = nextLevel,
+                    skill = (it.skill + 12).coerceAtMost(99),
+                    speed = (it.speed + 10).coerceAtMost(99),
+                    dailySalary = it.dailySalary * 1.30,
+                    morale = 100
+                )
+            } else it
+        }
+        val promotedTitle = updatedEmployees.find { it.id == employee.id }?.levelTitle ?: "Senior"
+        _gameState.value = state.copy(
+            cash = state.cash - employee.promotionCost,
+            employees = updatedEmployees,
+            notifications = listOf("★ PROMOTION: ${employee.name} promoted to Level $nextLevel $promotedTitle! Skill +12, Speed +10.") + state.notifications
+        )
+        showToast("Promoted ${employee.name} to $promotedTitle!")
+        com.example.audio.SoundManager.playLaunch()
+        saveGameInternal()
+    }
+
     fun sendOnRetreat(employee: Employee) {
         val state = _gameState.value
         if (state.cash < 300.0) {
@@ -263,7 +296,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun assignProduct(employee: Employee, productId: String?) {
         val state = _gameState.value
         val updatedEmployees = state.employees.map {
-            if (it.id == employee.id) it.copy(assignedProductId = productId) else it
+            if (it.id == employee.id) {
+                it.copy(
+                    assignedProductId = productId,
+                    assignedContractId = if (productId != null) null else it.assignedContractId
+                )
+            } else it
         }
         val prodName = state.products.find { it.id == productId }?.name ?: "Brainstorming"
         _gameState.value = state.copy(employees = updatedEmployees)
@@ -477,13 +515,101 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             planningPointsCurrent = 0,
             designPointsNeeded = category.baseDesignReq,
             codePointsNeeded = category.baseCodeReq,
-            testPointsNeeded = category.baseTestReq
+            testPointsNeeded = category.baseTestReq,
+            features = defaultFeaturesForCategory(category)
         )
         _gameState.value = state.copy(
             products = state.products + newProduct,
             notifications = listOf("Started planning & design phase for new product '$name'!") + state.notifications
         )
         showToast("Started planning on '$name' (Designers needed)!")
+        saveGameInternal()
+    }
+
+    fun conductMarketResearch(product: Product) {
+        val state = _gameState.value
+        val cost = 800.0
+        if (state.cash < cost) {
+            showToast("Insufficient funds! Market research costs $800.")
+            return
+        }
+        val rivalsInCategory = state.competitors.count { it.category == product.category && !it.isAcquired }
+        val saturation = when {
+            rivalsInCategory >= 3 -> "High Saturation"
+            rivalsInCategory >= 1 -> "Moderate Competition"
+            else -> "Underserved Niche (High Potential)"
+        }
+        val demand = when (product.category) {
+            ProductCategory.AI_ASSISTANT -> 1.35f
+            ProductCategory.SOCIAL_APP -> 1.15f
+            ProductCategory.SAAS_TOOL -> 1.05f
+            ProductCategory.MOBILE_GAME -> 1.20f
+            ProductCategory.ECOMMERCE -> 0.95f
+        }
+        val report = MarketResearchReport(
+            isCompleted = true,
+            marketSaturation = saturation,
+            demandScore = demand,
+            recommendedPricing = when (product.category) {
+                ProductCategory.SAAS_TOOL -> MonetizationModel.SUBSCRIPTION
+                ProductCategory.AI_ASSISTANT -> MonetizationModel.ENTERPRISE
+                ProductCategory.MOBILE_GAME -> MonetizationModel.FREEMIUM
+                ProductCategory.SOCIAL_APP -> MonetizationModel.FREE_WITH_ADS
+                ProductCategory.ECOMMERCE -> MonetizationModel.FREEMIUM
+            },
+            targetAudience = when (product.category) {
+                ProductCategory.SAAS_TOOL -> "B2B SMBs & Enterprises"
+                ProductCategory.AI_ASSISTANT -> "Developers & Power Users"
+                ProductCategory.MOBILE_GAME -> "Gen-Z & Mobile Gamers"
+                ProductCategory.SOCIAL_APP -> "Global Creators & Communities"
+                ProductCategory.ECOMMERCE -> "Digital Shoppers & Merchants"
+            },
+            estimatedMaxUsers = (120000 * demand).toInt(),
+            competitorDensity = "$rivalsInCategory Active Rivals"
+        )
+        val updatedProducts = state.products.map {
+            if (it.id == product.id) it.copy(marketResearch = report) else it
+        }
+        _gameState.value = state.copy(
+            cash = state.cash - cost,
+            products = updatedProducts,
+            notifications = listOf("Completed Market Feasibility Study for '${product.name}'! Demand: ${(demand * 100).toInt()}%. Saturation: $saturation.") + state.notifications
+        )
+        showToast("Market research complete! Demand: ${(demand * 100).toInt()}%")
+        com.example.audio.SoundManager.playConfirm()
+        saveGameInternal()
+    }
+
+    fun startFeatureDevelopment(productId: String, featureId: String) {
+        val state = _gameState.value
+        val updatedProducts = state.products.map { prod ->
+            if (prod.id == productId) {
+                val updatedFeatures = prod.features.map { feat ->
+                    if (feat.id == featureId) feat.copy(isUnderDevelopment = true) else feat
+                }
+                prod.copy(features = updatedFeatures)
+            } else prod
+        }
+        _gameState.value = state.copy(products = updatedProducts)
+        showToast("Feature queued! Assigned engineers will build it.")
+        com.example.audio.SoundManager.playClick()
+        saveGameInternal()
+    }
+
+    fun sellEquityForCapital(percent: Float) {
+        val state = _gameState.value
+        if (state.equityOwnedPercent <= 25.0f) {
+            showToast("Cannot sell more equity! Founders must maintain at least 25% control.")
+            return
+        }
+        val capitalRaised = state.valuation * (percent / 100.0)
+        _gameState.value = state.copy(
+            cash = state.cash + capitalRaised,
+            equityOwnedPercent = (state.equityOwnedPercent - percent).coerceAtLeast(0f),
+            notifications = listOf("Equity Investment: Sold ${percent.toInt()}% equity for $%,.0f in funding!".format(capitalRaised)) + state.notifications
+        )
+        showToast("Raised $%,.0f for ${percent.toInt()}% equity!".format(capitalRaised))
+        com.example.audio.SoundManager.playCash()
         saveGameInternal()
     }
 
@@ -538,11 +664,55 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 )
             } else it
         }
-        _gameState.value = state.copy(employees = updatedEmployees)
+        val updatedContracts = state.contracts.map { c ->
+            if (c.id == contractId) {
+                c.copy(assignedEmployeeIds = (c.assignedEmployeeIds + employeeId).distinct())
+            } else {
+                c.copy(assignedEmployeeIds = c.assignedEmployeeIds.filter { it != employeeId })
+            }
+        }
+        _gameState.value = state.copy(employees = updatedEmployees, contracts = updatedContracts)
         val targetName = if (contractId != null) {
             state.contracts.find { it.id == contractId }?.title ?: "Contract"
         } else "Idle"
         showToast("Assigned ${emp.name} to $targetName.")
+    }
+
+    fun deliverContract(contractId: String) {
+        val state = _gameState.value
+        val contract = state.contracts.find { it.id == contractId } ?: return
+        if (!contract.isDeliverable || contract.status != ContractStatus.IN_PROGRESS) {
+            showToast("Contract requirements not met yet!")
+            return
+        }
+
+        val updatedContracts = state.contracts.map {
+            if (it.id == contractId) {
+                it.copy(
+                    status = ContractStatus.COMPLETED,
+                    isDelivered = true,
+                    milestones = it.milestones.map { ms -> ms.copy(isCompleted = true) }
+                )
+            } else it
+        }
+
+        val updatedEmployees = state.employees.map {
+            if (it.assignedContractId == contractId) it.copy(assignedContractId = null) else it
+        }
+
+        // Spawn a new higher-tier or fresh contract
+        val freshContracts = SimulationEngine.generateFreshContracts(state.reputation + contract.reputationGain)
+
+        _gameState.value = state.copy(
+            cash = state.cash + contract.completionReward,
+            reputation = (state.reputation + contract.reputationGain).coerceAtMost(500),
+            contracts = updatedContracts + freshContracts,
+            employees = updatedEmployees,
+            notifications = listOf("✓ DELIVERED: '${contract.title}' to ${contract.clientName}! Received final reward +$%,.0f, +%d Rep.".format(contract.completionReward, contract.reputationGain)) + state.notifications
+        )
+        showToast("Delivered '${contract.title}'! +$%,.0f".format(contract.completionReward))
+        com.example.audio.SoundManager.playLaunch()
+        saveGameInternal()
     }
 
     fun cancelContract(contractId: String) {
@@ -578,14 +748,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val updatedCompetitors = state.competitors.map {
-            if (it.id == competitorId) it.copy(isAcquired = true, status = "Acquired Subsidiary") else it
+            if (it.id == competitorId) it.copy(
+                isAcquired = true,
+                status = "Acquired Subsidiary",
+                latestActivity = "Operating as wholly-owned subsidiary of ${state.companyName}"
+            ) else it
         }
 
         val matchingProduct = state.products.find { it.category == competitor.category && it.stage == ProductStage.LIVE }
         val updatedProducts = if (matchingProduct != null) {
             state.products.map {
                 if (it.id == matchingProduct.id) {
-                    it.copy(activeUsers = it.activeUsers + (competitor.activeUsers * 0.40).toInt())
+                    it.copy(
+                        activeUsers = it.activeUsers + (competitor.activeUsers * 0.45).toInt(),
+                        yesterdayRevenue = it.yesterdayRevenue + (competitor.monthlyRevenue / 30.0 * 0.50)
+                    )
                 } else it
             }
         } else {
@@ -594,37 +771,56 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 name = competitor.productNames.firstOrNull() ?: "${competitor.name} Suite",
                 category = competitor.category,
                 stage = ProductStage.LIVE,
-                activeUsers = (competitor.activeUsers * 0.40).toInt(),
-                dailyRevenue = competitor.monthlyRevenue / 30.0 * 0.70,
+                activeUsers = (competitor.activeUsers * 0.45).toInt(),
+                yesterdayRevenue = competitor.monthlyRevenue / 30.0 * 0.70,
+                dailyRevenue = 0.0,
                 monetization = MonetizationModel.SUBSCRIPTION
             )
             state.products + adopted
         }
 
+        // Find available workstations for acquired staff
+        val availableWorkstations = state.furniture.filter { it.type.isWorkstation && state.employees.none { emp -> emp.assignedDeskId == it.id } }
+        val desk1 = availableWorkstations.getOrNull(0)?.id
+        val desk2 = availableWorkstations.getOrNull(1)?.id
+
+        val staff1Id = "emp_acq_${competitor.id}_1"
+        val staff2Id = "emp_acq_${competitor.id}_2"
+
         val acquiredStaff = listOf(
             Employee(
-                id = "emp_acquired_${System.currentTimeMillis()}_1",
-                name = "${competitor.name} Lead Dev",
+                id = staff1Id,
+                name = "${competitor.name.split(" ").first()} Lead Dev",
                 role = EmployeeRole.DEVELOPER,
                 level = 3,
                 skill = 85,
                 speed = 78,
                 dailySalary = 160.0,
                 morale = 95,
-                energy = 95
+                energy = 95,
+                assignedDeskId = desk1
             ),
             Employee(
-                id = "emp_acquired_${System.currentTimeMillis()}_2",
-                name = "${competitor.name} Senior PM",
+                id = staff2Id,
+                name = "${competitor.name.split(" ").first()} Senior PM",
                 role = EmployeeRole.PROJECT_MANAGER,
                 level = 3,
-                skill = 80,
+                skill = 82,
                 speed = 80,
                 dailySalary = 170.0,
                 morale = 95,
-                energy = 95
+                energy = 95,
+                assignedDeskId = desk2
             )
         )
+
+        val updatedFurniture = state.furniture.map { furn ->
+            when (furn.id) {
+                desk1 -> furn.copy(assignedEmployeeId = staff1Id)
+                desk2 -> furn.copy(assignedEmployeeId = staff2Id)
+                else -> furn
+            }
+        }
 
         _gameState.value = state.copy(
             cash = state.cash - competitor.acquisitionCost,
@@ -632,9 +828,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             competitors = updatedCompetitors,
             products = updatedProducts,
             employees = state.employees + acquiredStaff,
-            notifications = listOf("STRATEGIC BUYOUT! Acquired ${competitor.name} for $%,.0f. Absorbed users and senior engineering talent!".format(competitor.acquisitionCost)) + state.notifications
+            furniture = updatedFurniture,
+            notifications = listOf("STRATEGIC BUYOUT: Acquired ${competitor.name} for $%,.0f! Absorbed %,d users and senior engineering leadership.".format(competitor.acquisitionCost, (competitor.activeUsers * 0.45).toInt())) + state.notifications
         )
-        showToast("Strategic Buyout! Acquired ${competitor.name}!")
+        showToast("Strategic Buyout: Acquired ${competitor.name}!")
         com.example.audio.SoundManager.playLaunch()
         saveGameInternal()
     }

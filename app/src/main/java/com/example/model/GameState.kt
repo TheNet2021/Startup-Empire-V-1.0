@@ -34,7 +34,27 @@ data class GameState(
 
     val totalActiveUsers: Int get() = products.filter { it.stage == ProductStage.LIVE }.sumOf { it.activeUsers }
 
-    val monthlyRevenue: Double get() = products.filter { it.stage == ProductStage.LIVE }.sumOf { it.dailyRevenue } * 30.0
+    val effectiveDailyRevenue: Double get() = products.filter { it.stage == ProductStage.LIVE }
+        .sumOf { prod ->
+            if (prod.yesterdayRevenue > 0) {
+                prod.yesterdayRevenue.coerceAtLeast(prod.dailyRevenue)
+            } else {
+                val hourFactor = (24.0 / clock.hour.coerceAtLeast(1)).coerceIn(1.0, 24.0)
+                prod.dailyRevenue * hourFactor
+            }
+        }
+
+    val monthlyRevenue: Double get() = effectiveDailyRevenue * 30.0
+
+    val dailyExpenses: Double get() =
+        employees.sumOf { it.dailySalary } +
+        (officeTier.monthlyRent / 30.0) +
+        server.calculateDailyCost(totalActiveUsers) +
+        products.sumOf { it.dailyMarketingSpend } +
+        activeLoans.sumOf { it.dailyPayment }
+
+    val monthlyExpenses: Double get() = dailyExpenses * 30.0
+    val monthlyProfit: Double get() = monthlyRevenue - monthlyExpenses
 
     val serverLoad: Float get() = server.calculateLoad(totalActiveUsers)
 
@@ -62,15 +82,31 @@ data class GameState(
         val avgSatisfaction = if (liveProducts.isNotEmpty()) {
             liveProducts.map { it.userSatisfaction }.average().toFloat()
         } else 0.85f
-        val satisfactionFactor = (avgSatisfaction / 0.85f).coerceIn(0.7f, 1.4f)
-        val usersValue = totalActiveUsers * 15.0
-        val assetsValue = furniture.sumOf { it.type.cost * 0.75 } + (officeTier.ordinal * 15000.0)
-        val techBonus = unlockedTechIds.size * 6000.0
+        val satisfactionFactor = (avgSatisfaction / 0.85f).coerceIn(0.7f, 1.35f)
+
+        val profitMargin = if (monthlyRevenue > 0) (monthlyProfit / monthlyRevenue).coerceIn(-1.0, 1.0) else -0.5
+        val earningsMultiple = when {
+            profitMargin >= 0.35 -> 5.5
+            profitMargin >= 0.15 -> 4.5
+            profitMargin >= 0.0 -> 3.8
+            profitMargin >= -0.25 -> 2.6
+            else -> 1.8
+        }
+
+        val revenueValuation = annualRevenue * earningsMultiple * satisfactionFactor
+        val usersValue = totalActiveUsers * when {
+            totalActiveUsers > 150000 -> 15.0
+            totalActiveUsers > 25000 -> 12.0
+            else -> 10.0
+        }
+        val physicalAssets = furniture.sumOf { it.type.cost * 0.70 } + (officeTier.ordinal * 14000.0)
+        val techPatentsValue = unlockedTechIds.size * 8000.0
         val totalDebt = activeLoans.sumOf { it.remainingBalance }
-        val brandReputationValue = reputation * 250.0
-        val netCash = cash.coerceAtLeast(0.0)
-        val baseValuation = netCash + assetsValue - totalDebt + (annualRevenue * 4.5 * satisfactionFactor) + usersValue + techBonus + brandReputationValue
-        return (baseValuation * (equityOwnedPercent / 100.0)).coerceAtLeast(15000.0)
+        val brandEquity = reputation * 300.0
+        val liquidCash = cash.coerceAtLeast(0.0)
+
+        val totalBase = liquidCash + physicalAssets - totalDebt + revenueValuation + usersValue + techPatentsValue + brandEquity
+        return (totalBase * (equityOwnedPercent / 100.0)).coerceAtLeast(15000.0)
     }
 
     val leaderboard: List<LeaderboardEntry> get() {
@@ -82,27 +118,32 @@ data class GameState(
             logoColor = companyLogoColor,
             valuation = valuation,
             monthlyRevenue = monthlyRevenue,
+            monthlyProfit = monthlyProfit,
             activeUsers = totalActiveUsers,
             marketShare = marketShare,
             reputation = reputation,
             isPlayer = true,
-            statusText = levelTitle
+            statusText = levelTitle,
+            latestActivity = "Organic growth & pipeline delivery"
         )
         val competitorEntries = competitors.map { comp ->
             LeaderboardEntry(
                 rank = 0,
+                rankDelta = comp.rankDelta,
                 companyId = comp.id,
                 companyName = comp.name,
                 logoIcon = comp.logoIcon,
                 logoColor = comp.logoColor,
                 valuation = comp.valuation,
                 monthlyRevenue = comp.monthlyRevenue,
+                monthlyProfit = comp.monthlyProfit,
                 activeUsers = comp.activeUsers,
                 marketShare = comp.marketShare,
                 reputation = comp.reputation,
                 isPlayer = false,
                 isAcquired = comp.isAcquired,
-                statusText = comp.status
+                statusText = comp.status,
+                latestActivity = comp.latestActivity
             )
         }
         return (listOf(playerEntry) + competitorEntries)
@@ -241,7 +282,8 @@ data class GameState(
                 testPointsNeeded = 80,
                 testPointsCurrent = 20,
                 bugsCount = 3,
-                monetization = MonetizationModel.FREEMIUM
+                monetization = MonetizationModel.FREEMIUM,
+                features = defaultFeaturesForCategory(ProductCategory.SOCIAL_APP)
             )
         )
     }

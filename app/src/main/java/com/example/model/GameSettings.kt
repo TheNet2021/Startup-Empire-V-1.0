@@ -5,7 +5,8 @@ data class GameSettings(
     val sfxVolume: Float = 0.85f,
     val isMusicEnabled: Boolean = true,
     val isSfxEnabled: Boolean = true,
-    val isHapticsEnabled: Boolean = true
+    val isHapticsEnabled: Boolean = true,
+    val selectedMusicTrack: Int = 0
 )
 
 data class SaveSummary(

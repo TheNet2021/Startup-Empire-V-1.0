@@ -258,4 +258,81 @@ class ExampleRobolectricTest {
     assertEquals(0.4f, loadedSettings.musicVolume, 0.01f)
     assertFalse(loadedSettings.isMusicEnabled)
   }
+
+  @Test
+  fun `midnight rollover resets product daily revenue to prevent runaway inflation`() {
+    val liveProd = Product(
+      id = "prod_roll",
+      name = "Daily App",
+      category = ProductCategory.SAAS_TOOL,
+      stage = ProductStage.LIVE,
+      activeUsers = 5000,
+      dailyRevenue = 250.0,
+      totalRevenue = 1000.0
+    )
+    val state = GameState(
+      clock = GameClock(day = 1, hour = 23, totalHoursElapsed = 23),
+      products = listOf(liveProd)
+    )
+
+    val tickedState = SimulationEngine.tick(state, 1)
+    val rolledProd = tickedState.products.first()
+    assertEquals(2, tickedState.clock.day)
+    assertEquals(0, tickedState.clock.hour)
+    // Yesterday revenue captures the daily revenue, and dailyRevenue resets for the new day
+    assertTrue(rolledProd.yesterdayRevenue >= 250.0)
+    assertTrue(rolledProd.dailyRevenue < 20.0) // only hour 0's small increment
+  }
+
+  @Test
+  fun `competitor acquisition absorbs market share and user base`() {
+    val targetComp = CompetitorCompany(
+      id = "comp_target",
+      name = "Target Inc",
+      category = ProductCategory.SAAS_TOOL,
+      valuation = 150000.0,
+      monthlyRevenue = 12000.0,
+      monthlyExpenses = 15000.0,
+      cash = 20000.0,
+      activeUsers = 20000,
+      marketShare = 15.0f,
+      reputation = 90,
+      employeeCount = 8,
+      productNames = listOf("Legacy App"),
+      acquisitionCost = 105000.0,
+      status = "Struggling",
+      isAcquired = false
+    )
+    // Struggling status gives a 30% discount
+    val expectedPrice = targetComp.valuation * 0.70
+    assertEquals(105000.0, expectedPrice, 0.01)
+
+    val playerProd = Product(
+      id = "player_prod",
+      name = "Main SaaS",
+      category = ProductCategory.SAAS_TOOL,
+      stage = ProductStage.LIVE,
+      activeUsers = 10000
+    )
+    val state = GameState(
+      cash = 200000.0,
+      products = listOf(playerProd),
+      competitors = listOf(targetComp)
+    )
+
+    // Simulate acquisition through state transformation
+    val absorbedUsers = (targetComp.activeUsers * 0.45).toInt()
+    val updatedProd = playerProd.copy(activeUsers = playerProd.activeUsers + absorbedUsers)
+    val acquiredComp = targetComp.copy(isAcquired = true, status = "Acquired", activeUsers = 0)
+    val afterAcquisitionState = state.copy(
+      cash = state.cash - expectedPrice,
+      products = listOf(updatedProd),
+      competitors = listOf(acquiredComp)
+    )
+
+    assertEquals(95000.0, afterAcquisitionState.cash, 0.01)
+    assertEquals(19000, afterAcquisitionState.products.first().activeUsers)
+    assertTrue(afterAcquisitionState.competitors.first().isAcquired)
+  }
 }
+

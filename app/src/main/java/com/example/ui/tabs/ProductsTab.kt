@@ -32,8 +32,11 @@ fun ProductsTab(
     onSetSprintMode: (Product, SprintMode) -> Unit,
     onStartProductUpdate: (Product) -> Unit,
     onToggleMaintenance: (Product) -> Unit = {},
+    onConductMarketResearch: (Product) -> Unit = {},
+    onStartFeatureDevelopment: (String, String) -> Unit = { _, _ -> },
     onAcceptContract: (String) -> Unit = {},
     onCancelContract: (String) -> Unit = {},
+    onDeliverContract: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedSection by remember { mutableIntStateOf(0) } // 0: Products, 1: Client Contracts
@@ -371,6 +374,194 @@ fun ProductsTab(
                                     }
                                 }
                             }
+
+                            // --- MARKET FEASIBILITY STUDY ---
+                            Spacer(modifier = Modifier.height(10.dp))
+                            HorizontalDivider(color = Color(0xFF1E293B))
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            if (prod.marketResearch == null) {
+                                OutlinedButton(
+                                    onClick = { onConductMarketResearch(prod) },
+                                    enabled = state.cash >= 800.0,
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFA855F7)),
+                                    modifier = Modifier.fillMaxWidth().testTag("research_button_${prod.id}")
+                                ) {
+                                    Icon(Icons.Default.Analytics, contentDescription = null, tint = Color(0xFFA855F7), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Conduct Market Feasibility Study ($800)", fontSize = 11.sp, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                val report = prod.marketResearch
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF1E293B).copy(alpha = 0.6f),
+                                    border = BorderStroke(1.dp, Color(0xFFA855F7).copy(alpha = 0.4f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFFA855F7), modifier = Modifier.size(14.dp))
+                                                Text("Market Study: ${report.marketSaturation}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                            Text("Demand: ${(report.demandScore * 100).toInt()}%", color = Color(0xFF34D399), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Target: ${report.targetAudience}", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                            Text("Est. Cap: %,d users".format(report.estimatedMaxUsers), color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // --- FEATURE ROADMAP EXPANDER ---
+                            if (prod.features.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                var isRoadmapExpanded by remember { mutableStateOf(false) }
+                                val implementedCount = prod.features.count { it.isImplemented }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF1E293B).copy(alpha = 0.4f),
+                                    border = BorderStroke(1.dp, Color(0xFF334155)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { isRoadmapExpanded = !isRoadmapExpanded },
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(15.dp))
+                                                Text("Feature Roadmap ($implementedCount/${prod.features.size} Unlocked)", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                            Icon(
+                                                imageVector = if (isRoadmapExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = Color(0xFF94A3B8),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+
+                                        if (isRoadmapExpanded) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            prod.features.forEach { feat ->
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color(0xFF0F172A),
+                                                    border = BorderStroke(1.dp, if (feat.isImplemented) Color(0xFF10B981).copy(alpha = 0.4f) else Color(0xFF1E293B)),
+                                                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(8.dp),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                                            Text(feat.name, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                            Text(feat.description, color = Color(0xFF94A3B8), fontSize = 9.sp, maxLines = 2)
+                                                            Spacer(modifier = Modifier.height(2.dp))
+                                                            Text(
+                                                                text = "+$%.3f ARPU | +${(feat.satisfactionBoost * 100).toInt()}% Sat".format(feat.arpuBoost),
+                                                                color = Color(0xFF34D399),
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.SemiBold
+                                                            )
+                                                        }
+
+                                                        when {
+                                                            feat.isImplemented -> {
+                                                                Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFF10B981).copy(alpha = 0.2f)) {
+                                                                    Text("Active", color = Color(0xFF10B981), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                                }
+                                                            }
+                                                            feat.isUnderDevelopment -> {
+                                                                Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFF00E5FF).copy(alpha = 0.2f)) {
+                                                                    Text("Building...", color = Color(0xFF00E5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                                }
+                                                            }
+                                                            else -> {
+                                                                Button(
+                                                                    onClick = { onStartFeatureDevelopment(prod.id, feat.id) },
+                                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                                                                    shape = RoundedCornerShape(4.dp),
+                                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                                                ) {
+                                                                    Text("Queue", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // --- CUSTOMER REVIEWS (FOR LIVE PRODUCTS) ---
+                            if (prod.customerReviews.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                var isReviewsExpanded by remember { mutableStateOf(false) }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF1E293B).copy(alpha = 0.3f),
+                                    border = BorderStroke(1.dp, Color(0xFF334155)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { isReviewsExpanded = !isReviewsExpanded },
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFBBF24), modifier = Modifier.size(15.dp))
+                                                Text("User Reviews (${prod.customerReviews.size})", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                            Icon(
+                                                imageVector = if (isReviewsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = Color(0xFF94A3B8),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+
+                                        if (isReviewsExpanded) {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            prod.customerReviews.takeLast(3).reversed().forEach { review ->
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color(0xFF0F172A),
+                                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                            Text(review.author, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                            Text("★".repeat(review.rating), color = Color(0xFFFBBF24), fontSize = 10.sp)
+                                                        }
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text(review.comment, color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -473,7 +664,7 @@ fun ProductsTab(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text("Deadline: ${contract.daysRemaining} days remaining", color = if (contract.daysRemaining <= 3) Color(0xFFEF4444) else Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    Text("$assignedStaffCount Staff Working", color = Color(0xFF00E5FF), fontSize = 11.sp)
+                                    Text("$assignedStaffCount Staff Assigned", color = Color(0xFF00E5FF), fontSize = 11.sp)
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -483,7 +674,50 @@ fun ProductsTab(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 DevProgressBar("QA Testing", contract.currentQAPoints, contract.requiredQAPoints, Color(0xFF10B981))
 
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Milestones list
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    contract.milestones.forEach { ms ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Icon(
+                                                    imageVector = if (ms.isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                                    contentDescription = null,
+                                                    tint = if (ms.isCompleted) Color(0xFF10B981) else Color(0xFF64748B),
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Text(ms.title, color = if (ms.isCompleted) Color(0xFFCBD5E1) else Color(0xFF94A3B8), fontSize = 10.sp)
+                                            }
+                                            Text(
+                                                text = if (ms.isCompleted) "PAID +$%,.0f".format(ms.rewardPayout) else "+$%,.0f".format(ms.rewardPayout),
+                                                color = if (ms.isCompleted) Color(0xFF10B981) else Color(0xFFFBBF24),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(10.dp))
+
+                                if (contract.isDeliverable) {
+                                    Button(
+                                        onClick = { onDeliverContract(contract.id) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth().testTag("deliver_contract_${contract.id}")
+                                    ) {
+                                        Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Deliver Contract (+$%,.0f)".format(contract.completionReward), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
 
                                 OutlinedButton(
                                     onClick = { onCancelContract(contract.id) },

@@ -28,10 +28,21 @@ fun FinanceTab(
     onRepayLoanEarly: (ActiveLoan) -> Unit,
     onStartResearch: (TechUpgrade) -> Unit,
     onAcquireCompetitor: (String) -> Unit = {},
+    onSellEquity: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedSubtab by remember { mutableIntStateOf(0) } // 0: Financials, 1: Market & Rivals, 2: Tech Tree
     var competitorToAcquire by remember { mutableStateOf<CompetitorCompany?>(null) }
+    var leaderboardSortBy by remember { mutableStateOf("Valuation") }
+
+    val sortedLeaderboard = remember(state.leaderboard, leaderboardSortBy) {
+        when (leaderboardSortBy) {
+            "Revenue" -> state.leaderboard.sortedByDescending { it.monthlyRevenue }
+            "Market Share" -> state.leaderboard.sortedByDescending { it.marketShare }
+            "Reputation" -> state.leaderboard.sortedByDescending { it.reputation }
+            else -> state.leaderboard.sortedByDescending { it.valuation }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -245,6 +256,91 @@ fun FinanceTab(
                             }
                         }
                     }
+
+                    // Venture Capital & Equity Rounds
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                            border = BorderStroke(1.dp, Color(0xFF1E293B)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Venture Capital & Equity Financing",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0xFF1E293B)
+                                    ) {
+                                        Text(
+                                            text = "%.0f%% Owned".format(state.equityOwnedPercent),
+                                            color = Color(0xFF38BDF8),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Sell minority equity stakes to angel investors and venture funds for growth capital. Founders must maintain at least 25% ownership.",
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                val equityRounds = listOf(
+                                    Pair("Angel Syndicate Pitch (5% Equity)", 5.0f),
+                                    Pair("Seed Venture Round (10% Equity)", 10.0f),
+                                    Pair("Series A Growth Round (20% Equity)", 20.0f)
+                                )
+
+                                equityRounds.forEach { (roundTitle, pct) ->
+                                    val raiseAmount = state.valuation * (pct / 100.0)
+                                    val canSell = (state.equityOwnedPercent - pct) >= 25.0f
+
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0xFF1E293B),
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(roundTitle, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    "Capital Injection: +$%,.0f".format(raiseAmount),
+                                                    color = Color(0xFF34D399),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                            Button(
+                                                onClick = { onSellEquity(pct) },
+                                                enabled = canSell,
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                                shape = RoundedCornerShape(6.dp),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(if (canSell) "Sell ${pct.toInt()}%" else "Limit Reached", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -295,10 +391,42 @@ fun FinanceTab(
                     }
 
                     item {
-                        Text("Tech Tycoon Global Leaderboard", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Tech Tycoon Global Leaderboard", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf("Valuation", "Revenue", "Market Share", "Reputation").forEach { sortKey ->
+                                    val isSelected = leaderboardSortBy == sortKey
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isSelected) Color(0xFF00E5FF).copy(alpha = 0.2f) else Color(0xFF1E293B),
+                                        border = BorderStroke(1.dp, if (isSelected) Color(0xFF00E5FF) else Color(0xFF334155)),
+                                        modifier = Modifier.weight(1f).clickable { leaderboardSortBy = sortKey }
+                                    ) {
+                                        Text(
+                                            text = sortKey,
+                                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF94A3B8),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(vertical = 5.dp).fillMaxWidth(),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
-                    items(state.leaderboard, key = { it.companyId }) { entry ->
+                    items(sortedLeaderboard, key = { it.companyId }) { entry ->
                         val isPlayer = entry.isPlayer
                         Card(
                             colors = CardDefaults.cardColors(
@@ -370,6 +498,16 @@ fun FinanceTab(
                                             fontSize = 10.sp
                                         )
                                     }
+                                }
+
+                                if (entry.latestActivity.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "• ${entry.latestActivity}",
+                                        color = Color(0xFFCBD5E1),
+                                        fontSize = 10.sp,
+                                        style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                                    )
                                 }
 
                                 if (!isPlayer) {
@@ -502,42 +640,88 @@ fun FinanceTab(
 
     // Modal for Acquisition Buyout
     competitorToAcquire?.let { comp ->
+        val canAfford = state.cash >= comp.acquisitionCost
+        val discountLabel = when (comp.status) {
+            "Struggling" -> "Distressed Buyout (30% Discount)"
+            "Growing" -> "Fair Market Valuation (8% Discount)"
+            else -> "Strategic Control Premium (+5%)"
+        }
+
         AlertDialog(
             onDismissRequest = { competitorToAcquire = null },
-            title = { Text("Corporate Acquisition: ${comp.name}", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Acquire ${comp.name}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (comp.status == "Struggling") Color(0xFFEF4444).copy(alpha = 0.2f) else Color(0xFF10B981).copy(alpha = 0.2f)
+                    ) {
+                        Text(comp.status, color = if (comp.status == "Struggling") Color(0xFFF87171) else Color(0xFF34D399), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+            },
             containerColor = Color(0xFF131B2E),
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Buyout Terms & Financial Impact:", color = Color(0xFFCBD5E1), fontSize = 12.sp)
+                    Text("Negotiation Terms: $discountLabel", color = Color(0xFFCBD5E1), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = Color(0xFF1E293B),
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("Acquisition Price:", color = Color(0xFF94A3B8), fontSize = 11.sp)
                                 Text("$%,.0f Cash".format(comp.acquisitionCost), color = Color(0xFFFBBF24), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Absorbed User Base:", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("+%,d Active Users".format((comp.activeUsers * 0.40).toInt()), color = Color(0xFF34D399), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Your Available Cash:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                Text("$%,.0f".format(state.cash), color = if (canAfford) Color(0xFF34D399) else Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            HorizontalDivider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 2.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Absorbed Active Users:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                Text("+%,d Active Users".format((comp.activeUsers * 0.45).toInt()), color = Color(0xFF34D399), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Engineering Talent:", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("+2 Senior Tech Leads", color = Color(0xFF00E5FF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Acquired Senior Talent:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                Text("+2 Specialists (Lead Dev & Senior PM)", color = Color(0xFF00E5FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Brand Reputation:", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("+45 Reputation Points", color = Color(0xFF38BDF8), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Digital Product Rights:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                Text(comp.productNames.firstOrNull() ?: "Subsidiary Suite", color = Color(0xFFA855F7), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Brand Prestige Gain:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                Text("+45 Reputation Points", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                    Text(
-                        text = "Are you sure you want to execute this takeover? Cash will be deducted immediately.",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 11.sp
-                    )
+
+                    // Risk Advisory
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF0F172A),
+                        border = BorderStroke(1.dp, Color(0xFF334155))
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("⚠ Post-Merger Operational Advisory:", color = Color(0xFFFBBF24), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Absorbed staff will add +$330/day to company payroll. Ensure server capacity in the Servers tab can support %,d absorbed users.".format((comp.activeUsers * 0.45).toInt()), color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                        }
+                    }
+
+                    if (!canAfford) {
+                        Text(
+                            text = "Insufficient funds! You need $%,.0f more cash to execute this takeover.".format(comp.acquisitionCost - state.cash),
+                            color = Color(0xFFEF4444),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -546,9 +730,17 @@ fun FinanceTab(
                         onAcquireCompetitor(comp.id)
                         competitorToAcquire = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B))
+                    enabled = canAfford,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF59E0B),
+                        disabledContainerColor = Color(0xFF334155)
+                    )
                 ) {
-                    Text("Confirm Buyout", color = Color(0xFF090D16), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (canAfford) "Execute Strategic Buyout" else "Insufficient Funds",
+                        color = if (canAfford) Color(0xFF090D16) else Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             },
             dismissButton = {

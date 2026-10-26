@@ -17,6 +17,11 @@ import androidx.compose.ui.unit.sp
 import com.example.audio.SoundManager
 import com.example.model.GameSettings
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+
 @Composable
 fun SettingsDialog(
     settings: GameSettings,
@@ -32,15 +37,17 @@ fun SettingsDialog(
     var isMusicOn by remember { mutableStateOf(settings.isMusicEnabled) }
     var isSfxOn by remember { mutableStateOf(settings.isSfxEnabled) }
     var isHapticsOn by remember { mutableStateOf(settings.isHapticsEnabled) }
+    var selectedTrack by remember { mutableIntStateOf(settings.selectedMusicTrack) }
     var showMainMenuConfirm by remember { mutableStateOf(false) }
 
-    fun commitSettings() {
+    fun commitSettings(newTrack: Int = selectedTrack) {
         val updated = settings.copy(
             musicVolume = musicVol,
             sfxVolume = sfxVol,
             isMusicEnabled = isMusicOn,
             isSfxEnabled = isSfxOn,
-            isHapticsEnabled = isHapticsOn
+            isHapticsEnabled = isHapticsOn,
+            selectedMusicTrack = newTrack
         )
         onUpdateSettings(updated)
     }
@@ -68,16 +75,19 @@ fun SettingsDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Audio Section
-                Text("AUDIO & SOUND", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFF38BDF8), letterSpacing = 1.sp)
+                Text("AUDIO & SOUNDTRACK", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFF38BDF8), letterSpacing = 1.sp)
 
                 // Background Music
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Ambient Music", fontSize = 13.sp, color = Color.White)
+                        Column {
+                            Text("Background Music", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Synthesized Lo-Fi & Synthwave", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                        }
                         Switch(
                             checked = isMusicOn,
                             onCheckedChange = {
@@ -94,12 +104,13 @@ fun SettingsDialog(
                     }
 
                     if (isMusicOn) {
+                        // Track volume slider
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.VolumeDown, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
                             Slider(
                                 value = musicVol,
                                 onValueChange = {
@@ -114,7 +125,74 @@ fun SettingsDialog(
                                     activeTrackColor = Color(0xFF00E5FF)
                                 )
                             )
-                            Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        }
+
+                        // Music Track Selector Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFF1E293B))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(14.dp))
+                                        Text("Active Track:", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                                        Text(
+                                            SoundManager.TRACK_NAMES.getOrElse(selectedTrack) { "Track" },
+                                            fontSize = 11.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    SoundManager.TRACK_NAMES.forEachIndexed { index, name ->
+                                        val isSelected = selectedTrack == index
+                                        val shortLabel = when (index) {
+                                            0 -> "Lo-Fi Chill"
+                                            1 -> "Synthwave"
+                                            else -> "Acoustic"
+                                        }
+                                        FilledTonalButton(
+                                            onClick = {
+                                                selectedTrack = index
+                                                SoundManager.playClick()
+                                                SoundManager.switchTrack(index)
+                                                commitSettings(index)
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .testTag("btn_track_$index"),
+                                            shape = RoundedCornerShape(6.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = if (isSelected) Color(0xFF0284C7) else Color(0xFF1E293B),
+                                                contentColor = if (isSelected) Color.White else Color(0xFF94A3B8)
+                                            )
+                                        ) {
+                                            Text(shortLabel, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -148,7 +226,7 @@ fun SettingsDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.VolumeDown, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
                             Slider(
                                 value = sfxVol,
                                 onValueChange = {
@@ -166,7 +244,7 @@ fun SettingsDialog(
                                     activeTrackColor = Color(0xFF00E5FF)
                                 )
                             )
-                            Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
                         }
                     }
                 }

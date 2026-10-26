@@ -130,12 +130,16 @@ data class Product(
     val activeUsers: Int = 0,
     val totalRevenue: Double = 0.0,
     val dailyRevenue: Double = 0.0,
+    val yesterdayRevenue: Double = 0.0,
     val dailyMarketingSpend: Double = 0.0,
     val userSatisfaction: Float = 0.85f, // 0.0 to 1.0
     val daysLive: Int = 0,
     val sprintMode: SprintMode = SprintMode.NORMAL,
     val dailyDevCost: Double = 35.0,
-    val activeCampaigns: List<ActiveCampaign> = emptyList()
+    val activeCampaigns: List<ActiveCampaign> = emptyList(),
+    val marketResearch: MarketResearchReport? = null,
+    val features: List<ProductFeature> = emptyList(),
+    val customerReviews: List<CustomerReview> = emptyList()
 ) {
     val overallDevProgress: Float get() {
         val planRatio = if (planningPointsNeeded > 0) (planningPointsCurrent.toFloat() / planningPointsNeeded).coerceIn(0f, 1f) else 1f
@@ -151,10 +155,81 @@ data class Product(
         codePointsCurrent >= codePointsNeeded &&
         testPointsCurrent >= testPointsNeeded
 
+    val effectiveARPU: Double get() {
+        val featureBoost = features.filter { it.isImplemented }.sumOf { it.arpuBoost }
+        return monetization.revenuePerUser + featureBoost
+    }
+
     val rating: Float get() {
         val base = userSatisfaction * 5f
         val penalty = (bugsCount * 0.15f + techDebt * 0.05f).coerceAtMost(2.5f)
         return (base - penalty).coerceIn(1.0f, 5.0f)
+    }
+}
+
+data class MarketResearchReport(
+    val isCompleted: Boolean = false,
+    val marketSaturation: String = "Moderate",
+    val demandScore: Float = 0.90f,
+    val recommendedPricing: MonetizationModel = MonetizationModel.FREEMIUM,
+    val targetAudience: String = "Tech Early Adopters",
+    val estimatedMaxUsers: Int = 150000,
+    val competitorDensity: String = "2 Active Rivals"
+)
+
+data class ProductFeature(
+    val id: String,
+    val name: String,
+    val description: String,
+    val devPointsReq: Int,
+    val designPointsReq: Int,
+    val qaPointsReq: Int,
+    val satisfactionBoost: Float,
+    val arpuBoost: Double,
+    val isImplemented: Boolean = false,
+    val isUnderDevelopment: Boolean = false
+)
+
+data class CustomerReview(
+    val id: String,
+    val author: String,
+    val rating: Int, // 1 to 5 stars
+    val comment: String,
+    val daySubmitted: Int
+)
+
+fun defaultFeaturesForCategory(category: ProductCategory): List<ProductFeature> {
+    return when (category) {
+        ProductCategory.SOCIAL_APP -> listOf(
+            ProductFeature("feat_dark_mode", "Dark Mode & Theming", "Improves nighttime usage and user comfort.", 40, 30, 20, 0.05f, 0.005),
+            ProductFeature("feat_stories", "Ephemeral Stories", "24-hour video clips boosting daily active sessions.", 70, 50, 40, 0.08f, 0.012),
+            ProductFeature("feat_algorithm", "Neural Recommendation Feed", "Personalized machine-learning content feed.", 110, 40, 60, 0.12f, 0.025),
+            ProductFeature("feat_chat", "Encrypted Realtime Messaging", "P2P instant messaging with rich reactions.", 80, 45, 50, 0.09f, 0.018)
+        )
+        ProductCategory.SAAS_TOOL -> listOf(
+            ProductFeature("feat_audit_log", "Enterprise Audit Logs", "SOC2-compliant security logs for IT admins.", 60, 25, 45, 0.06f, 0.040),
+            ProductFeature("feat_api_webhooks", "Public REST API & Webhooks", "Enables third-party ERP and CRM integrations.", 95, 30, 55, 0.10f, 0.065),
+            ProductFeature("feat_sso", "SAML Single Sign-On (SSO)", "One-click login with Okta & Azure AD.", 75, 20, 50, 0.08f, 0.050),
+            ProductFeature("feat_collab", "Real-Time Multiplayer Canvas", "CRDT-based live synchronous document editing.", 120, 65, 80, 0.15f, 0.080)
+        )
+        ProductCategory.MOBILE_GAME -> listOf(
+            ProductFeature("feat_battlepass", "Seasonal Battlepass", "Tiered cosmetic rewards driving monetization.", 65, 80, 35, 0.07f, 0.035),
+            ProductFeature("feat_leaderboards", "Global Ranked Tournaments", "Competitive matchmaking with seasonal badges.", 80, 50, 45, 0.09f, 0.020),
+            ProductFeature("feat_guilds", "Guild Warfare & Clans", "Social clan alliances and cooperative raids.", 100, 70, 60, 0.11f, 0.030),
+            ProductFeature("feat_cloudsave", "Seamless Cross-Platform Cloud Save", "Sync progress across Android, iOS and Web.", 50, 20, 40, 0.06f, 0.015)
+        )
+        ProductCategory.ECOMMERCE -> listOf(
+            ProductFeature("feat_oneclick", "One-Click Instant Checkout", "Stripe & Apple Pay integration for low cart abandonment.", 70, 45, 50, 0.08f, 0.030),
+            ProductFeature("feat_tracking", "Live Map Delivery Tracking", "Real-time courier GPS route tracking.", 90, 55, 60, 0.10f, 0.040),
+            ProductFeature("feat_reviews", "Verified Customer Photo Reviews", "Social proof and buyer Q&A section.", 45, 40, 30, 0.05f, 0.020),
+            ProductFeature("feat_loyalty", "VIP Rewards & Cashback Program", "Tiered points for repeat order frequency.", 60, 35, 40, 0.07f, 0.035)
+        )
+        ProductCategory.AI_ASSISTANT -> listOf(
+            ProductFeature("feat_vision", "Multimodal Vision Input", "Analyze user camera photos, charts, and diagrams.", 110, 40, 70, 0.12f, 0.060),
+            ProductFeature("feat_voice", "Low-Latency Neural Speech", "Human-like natural duplex voice conversation.", 130, 30, 80, 0.14f, 0.075),
+            ProductFeature("feat_plugins", "Autonomous Agent Plugins", "Executes web searches, calendar bookings, and emails.", 140, 50, 90, 0.16f, 0.090),
+            ProductFeature("feat_memory", "Long-Term Personalized Memory", "Remembers user preferences and past context forever.", 85, 30, 55, 0.09f, 0.045)
+        )
     }
 }
 

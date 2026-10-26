@@ -30,6 +30,7 @@ fun EmployeesTab(
     onRaiseSalary: (Employee) -> Unit,
     onSendOnRetreat: (Employee) -> Unit,
     onTrainEmployee: (Employee) -> Unit,
+    onPromoteEmployee: (Employee) -> Unit = {},
     onFireEmployee: (Employee) -> Unit,
     onAssignProduct: (Employee, String?) -> Unit,
     onAssignContract: (Employee, String?) -> Unit = { _, _ -> },
@@ -137,6 +138,7 @@ fun EmployeesTab(
                                             EmployeeRole.MARKETER -> Icons.Default.Campaign
                                             EmployeeRole.SYSADMIN -> Icons.Default.Dns
                                             EmployeeRole.PROJECT_MANAGER -> Icons.Default.Engineering
+                                            EmployeeRole.SALES -> Icons.Default.TrendingUp
                                         },
                                         contentDescription = null,
                                         tint = Color.White,
@@ -335,6 +337,27 @@ fun EmployeesTab(
                                     }
                                 }
                             }
+
+                            if (emp.isPromotable) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Button(
+                                    onClick = { onPromoteEmployee(emp) },
+                                    enabled = state.cash >= emp.promotionCost,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().testTag("promote_employee_${emp.id}")
+                                ) {
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        "Promote to Level ${emp.level + 1} ($%,.0f Bonus)".format(emp.promotionCost),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -481,7 +504,12 @@ fun EmployeesTab(
 
         AlertDialog(
             onDismissRequest = { employeeToAssign = null },
-            title = { Text("Assign Task to ${emp.name}", color = Color.White) },
+            title = {
+                Column {
+                    Text("Assign Task: ${emp.name}", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("${emp.levelTitle} ${emp.role.title} (${emp.role.primarySkill}: ${emp.skill}, Spd: ${emp.speed})", color = Color(0xFF00E5FF), fontSize = 11.sp)
+                }
+            },
             containerColor = Color(0xFF131B2E),
             text = {
                 Column(
@@ -510,7 +538,7 @@ fun EmployeesTab(
                             ) {
                                 Column {
                                     Text(prod.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    Text("${prod.stage.name} | ${prod.category.title}", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                    Text("${prod.stage.name.replace("_", " ")} | ${prod.category.title}", color = Color(0xFF94A3B8), fontSize = 10.sp)
                                 }
                                 if (isAssigned) {
                                     Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(18.dp))
