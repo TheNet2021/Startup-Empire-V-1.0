@@ -1,0 +1,6 @@
+{
+  "name": "Startup Empire 3D",
+  "description": "A high-fidelity 3D isometric business management simulation. Build apps, hire specialists, customize your tech office, expand server infrastructure, and lead your startup to global dominance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
