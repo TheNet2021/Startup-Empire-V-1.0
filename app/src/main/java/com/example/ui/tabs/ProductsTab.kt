@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -482,12 +484,23 @@ fun ProductsTab(
                                                         when {
                                                             feat.isImplemented -> {
                                                                 Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFF10B981).copy(alpha = 0.2f)) {
-                                                                    Text("Active", color = Color(0xFF10B981), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                                    Text("✓ Active", color = Color(0xFF10B981), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                                 }
                                                             }
                                                             feat.isUnderDevelopment -> {
-                                                                Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFF00E5FF).copy(alpha = 0.2f)) {
-                                                                    Text("Building...", color = Color(0xFF00E5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                                Column(horizontalAlignment = Alignment.End) {
+                                                                    Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFF00E5FF).copy(alpha = 0.2f)) {
+                                                                        Text("Building (${(feat.progress * 100).toInt()}%)", color = Color(0xFF00E5FF), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                                    }
+                                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                                    Text("Dev ${feat.devPointsCurrent}/${feat.devPointsReq} | QA ${feat.qaPointsCurrent}/${feat.qaPointsReq}", color = Color(0xFF94A3B8), fontSize = 8.sp)
+                                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                                    LinearProgressIndicator(
+                                                                        progress = { feat.progress },
+                                                                        modifier = Modifier.width(90.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                                                        color = Color(0xFF00E5FF),
+                                                                        trackColor = Color(0xFF1E293B)
+                                                                    )
                                                                 }
                                                             }
                                                             else -> {
@@ -497,7 +510,7 @@ fun ProductsTab(
                                                                     shape = RoundedCornerShape(4.dp),
                                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                                                 ) {
-                                                                    Text("Queue", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                                    Text("Build ($450)", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                                                 }
                                                             }
                                                         }
@@ -821,16 +834,115 @@ fun ProductsTab(
 
     // Modal for creating product
     if (showCreateDialog) {
-        var nameInput by remember { mutableStateOf("") }
         var selectedCat by remember { mutableStateOf(ProductCategory.SOCIAL_APP) }
-        var selectedMon by remember { mutableStateOf(MonetizationModel.FREEMIUM) }
+        val categoryIdeas = remember(selectedCat) { defaultIdeasForCategory(selectedCat) }
+        var selectedIdea by remember(selectedCat) { mutableStateOf<ProductIdea?>(categoryIdeas.firstOrNull()) }
+        var nameInput by remember(selectedIdea) { mutableStateOf(selectedIdea?.name ?: selectedCat.defaultName) }
+        var selectedMon by remember(selectedIdea) { mutableStateOf(selectedIdea?.suggestedMonetization ?: MonetizationModel.FREEMIUM) }
 
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("New Product Initiation", color = Color.White) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFF00E5FF))
+                    Text("New Product Initiation", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
             containerColor = Color(0xFF131B2E),
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("1. Select Industry / Category:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ProductCategory.entries.take(3).forEach { cat ->
+                            val isSel = selectedCat == cat
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSel) Color(0xFF00E5FF).copy(alpha = 0.2f) else Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, if (isSel) Color(0xFF00E5FF) else Color(0xFF334155)),
+                                modifier = Modifier.weight(1f).clickable {
+                                    selectedCat = cat
+                                    val newIdeas = defaultIdeasForCategory(cat)
+                                    selectedIdea = newIdeas.firstOrNull()
+                                    nameInput = selectedIdea?.name ?: cat.defaultName
+                                    selectedMon = selectedIdea?.suggestedMonetization ?: MonetizationModel.FREEMIUM
+                                }
+                            ) {
+                                Text(
+                                    text = cat.title,
+                                    color = if (isSel) Color(0xFF00E5FF) else Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(6.dp)
+                                )
+                            }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ProductCategory.entries.drop(3).forEach { cat ->
+                            val isSel = selectedCat == cat
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSel) Color(0xFF00E5FF).copy(alpha = 0.2f) else Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, if (isSel) Color(0xFF00E5FF) else Color(0xFF334155)),
+                                modifier = Modifier.weight(1f).clickable {
+                                    selectedCat = cat
+                                    val newIdeas = defaultIdeasForCategory(cat)
+                                    selectedIdea = newIdeas.firstOrNull()
+                                    nameInput = selectedIdea?.name ?: cat.defaultName
+                                    selectedMon = selectedIdea?.suggestedMonetization ?: MonetizationModel.FREEMIUM
+                                }
+                            ) {
+                                Text(
+                                    text = cat.title,
+                                    color = if (isSel) Color(0xFF00E5FF) else Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(6.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Text("2. Curated Product Concepts:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        categoryIdeas.forEach { idea ->
+                            val isSel = selectedIdea?.id == idea.id
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSel) Color(0xFF00E5FF).copy(alpha = 0.15f) else Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, if (isSel) Color(0xFF00E5FF) else Color(0xFF334155)),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selectedIdea = idea
+                                    nameInput = idea.name
+                                    selectedMon = idea.suggestedMonetization
+                                }
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(idea.name, color = if (isSel) Color(0xFF00E5FF) else Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("${(idea.demandScore * 100).toInt()}% Demand", color = Color(0xFF34D399), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Text(idea.tagLine, color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                    Text("Audience: ${idea.targetAudience}", color = Color(0xFF94A3B8), fontSize = 9.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    Text("3. Customize Name:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
                         value = nameInput,
                         onValueChange = { nameInput = it },
@@ -846,31 +958,7 @@ fun ProductsTab(
                         modifier = Modifier.fillMaxWidth().testTag("input_product_name")
                     )
 
-                    Text("Product Category:", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        ProductCategory.entries.take(3).forEach { cat ->
-                            val isSel = selectedCat == cat
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = if (isSel) Color(0xFF00E5FF).copy(alpha = 0.2f) else Color(0xFF1E293B),
-                                border = BorderStroke(1.dp, if (isSel) Color(0xFF00E5FF) else Color(0xFF334155)),
-                                modifier = Modifier.weight(1f).clickable { selectedCat = cat }
-                            ) {
-                                Text(
-                                    text = cat.title,
-                                    color = if (isSel) Color(0xFF00E5FF) else Color(0xFF94A3B8),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(6.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Text("Monetization Model:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    Text("4. Monetization Model:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         MonetizationModel.entries.forEach { mon ->
                             val isSel = selectedMon == mon
@@ -895,7 +983,7 @@ fun ProductsTab(
             confirmButton = {
                 Button(
                     onClick = {
-                        val finalName = nameInput.trim().ifEmpty { selectedCat.defaultName }
+                        val finalName = nameInput.trim().ifEmpty { selectedIdea?.name ?: selectedCat.defaultName }
                         onCreateProduct(finalName, selectedCat, selectedMon)
                         showCreateDialog = false
                     },

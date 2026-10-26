@@ -8,9 +8,10 @@ data class ServerInfrastructure(
     val uptimePercent: Float = 99.95f,
     val isOutageActive: Boolean = false,
     val outageHoursRemaining: Int = 0,
-    val incidentReason: String? = null
+    val incidentReason: String? = null,
+    val techCapacityBonus: Float = 0f
 ) {
-    val totalPhysicalCapacity: Int get() = baseCloudCapacity + rackCapacity
+    val totalPhysicalCapacity: Int get() = ((baseCloudCapacity + rackCapacity) * (1f + techCapacityBonus)).toInt()
 
     fun calculateLoad(totalActiveUsers: Int): Float {
         if (totalPhysicalCapacity <= 0) return 1.0f

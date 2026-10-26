@@ -334,5 +334,114 @@ class ExampleRobolectricTest {
     assertEquals(19000, afterAcquisitionState.products.first().activeUsers)
     assertTrue(afterAcquisitionState.competitors.first().isAcquired)
   }
+
+  @Test
+  fun `assigned engineer advances feature development points until implemented`() {
+    val dev = Employee(
+      id = "emp_dev_feat",
+      name = "Senior Dev",
+      role = EmployeeRole.DEVELOPER,
+      skill = 90,
+      speed = 90,
+      assignedProductId = "prod_feat",
+      state = EmployeeState.WORKING
+    )
+    val feature = ProductFeature(
+      id = "feat_test",
+      name = "Test Feature",
+      description = "Feature under active development",
+      devPointsReq = 20,
+      designPointsReq = 0,
+      qaPointsReq = 0,
+      devPointsCurrent = 5,
+      satisfactionBoost = 0.05f,
+      arpuBoost = 0.01,
+      isUnderDevelopment = true,
+      isImplemented = false
+    )
+    val liveProd = Product(
+      id = "prod_feat",
+      name = "Feature Master",
+      category = ProductCategory.SAAS_TOOL,
+      stage = ProductStage.LIVE,
+      features = listOf(feature)
+    )
+    val state = GameState(
+      clock = GameClock(day = 1, hour = 10),
+      employees = listOf(dev),
+      products = listOf(liveProd)
+    )
+
+    val tickedState = SimulationEngine.tick(state, 4)
+    val updatedFeat = tickedState.products.first().features.first()
+    assertTrue(updatedFeat.devPointsCurrent > 5)
+  }
+
+  @Test
+  fun `contract cannot be delivered twice or grant duplicate rewards`() {
+    val contract = ClientContract(
+      id = "contract_dup_test",
+      title = "Duplicate Defense Contract",
+      clientName = "Lockdown",
+      category = ProductCategory.SAAS_TOOL,
+      tier = ContractTier.GOLD,
+      requiredDevPoints = 10,
+      currentDevPoints = 10,
+      requiredDesignPoints = 10,
+      currentDesignPoints = 10,
+      requiredQAPoints = 10,
+      currentQAPoints = 10,
+      deadlineDays = 5,
+      daysRemaining = 5,
+      upfrontDeposit = 500.0,
+      completionReward = 10000.0,
+      penaltyCost = 2000.0,
+      reputationGain = 25,
+      status = ContractStatus.IN_PROGRESS,
+      isRewardPaid = false
+    )
+    val state = GameState(
+      cash = 5000.0,
+      reputation = 50,
+      clock = GameClock(day = 1, hour = 23, totalHoursElapsed = 23),
+      contracts = listOf(contract)
+    )
+
+    val tickedOnce = SimulationEngine.tick(state, 1)
+    val completedOnce = tickedOnce.contracts.first()
+    assertTrue(completedOnce.isRewardPaid)
+    assertEquals(ContractStatus.COMPLETED, completedOnce.status)
+    val cashAfterFirst = tickedOnce.cash
+
+    // Tick again; should not grant second 10,000 completion reward
+    val tickedTwice = SimulationEngine.tick(tickedOnce.copy(clock = GameClock(day = 2, hour = 23, totalHoursElapsed = 47)), 1)
+    assertTrue(tickedTwice.cash <= cashAfterFirst) // only normal daily expenses, no extra 10,000 payout
+  }
+
+  @Test
+  fun `milestone achievement unlocks when condition is met on day rollover`() {
+    val liveProd = Product(
+      id = "prod_ms",
+      name = "Milestone App",
+      category = ProductCategory.SAAS_TOOL,
+      stage = ProductStage.LIVE,
+      activeUsers = 12000
+    )
+    val initialMilestones = CompanyMilestone.defaultMilestones()
+    val state = GameState(
+      clock = GameClock(day = 1, hour = 23, totalHoursElapsed = 23),
+      products = listOf(liveProd),
+      milestones = initialMilestones
+    )
+
+    val nextState = SimulationEngine.tick(state, 1)
+    val ms1 = nextState.milestones.find { it.id == "ms_first_product" }
+    val ms2 = nextState.milestones.find { it.id == "ms_ten_thousand_users" }
+    assertNotNull(ms1)
+    assertNotNull(ms2)
+    assertTrue(ms1?.isAchieved == true)
+    assertTrue(ms2?.isAchieved == true)
+  }
 }
+
 

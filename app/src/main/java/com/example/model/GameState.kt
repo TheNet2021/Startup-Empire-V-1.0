@@ -24,6 +24,7 @@ data class GameState(
     val activeLoans: List<ActiveLoan> = emptyList(),
     val financialHistory: List<FinancialRecord> = emptyList(),
     val todayLedger: DailyLedger = DailyLedger(),
+    val milestones: List<CompanyMilestone> = CompanyMilestone.defaultMilestones(),
     val pendingEvent: GameEvent? = null,
     val notifications: List<String> = listOf("Welcome to Startup Empire 3D! Hire staff, set up desks, and launch your first digital product."),
     val isBankrupt: Boolean = false,
@@ -31,6 +32,17 @@ data class GameState(
 ) {
     val totalWorkstations: Int get() = furniture.count { it.type.isWorkstation }
     val availableDesks: Int get() = (totalWorkstations - employees.size).coerceAtLeast(0)
+
+    val dailyNetProfit: Double get() = effectiveDailyRevenue - dailyExpenses
+    val burnRate: Double get() = if (dailyNetProfit < 0) -dailyNetProfit else 0.0
+    val cashRunwayDays: Int get() = if (burnRate > 0 && cash > 0) (cash / burnRate).toInt() else if (cash <= 0) 0 else 999
+
+    val avgEmployeeMorale: Int get() = if (employees.isNotEmpty()) employees.map { it.morale }.average().toInt() else 0
+    val avgEmployeeSkill: Int get() = if (employees.isNotEmpty()) employees.map { it.skill }.average().toInt() else 0
+    val avgEmployeeEnergy: Int get() = if (employees.isNotEmpty()) employees.map { it.energy }.average().toInt() else 0
+
+    val topProduct: Product? get() = products.filter { it.stage == ProductStage.LIVE }.maxByOrNull { it.activeUsers }
+    val topEmployee: Employee? get() = employees.maxByOrNull { it.skill }
 
     val totalActiveUsers: Int get() = products.filter { it.stage == ProductStage.LIVE }.sumOf { it.activeUsers }
 

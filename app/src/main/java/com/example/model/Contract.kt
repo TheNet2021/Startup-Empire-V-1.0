@@ -44,7 +44,8 @@ data class ClientContract(
     val status: ContractStatus = ContractStatus.AVAILABLE,
     val assignedEmployeeIds: List<String> = emptyList(),
     val milestones: List<ContractMilestone> = emptyList(),
-    val isDelivered: Boolean = false
+    val isDelivered: Boolean = false,
+    val isRewardPaid: Boolean = false
 ) {
     val overallProgress: Float get() {
         val devRatio = if (requiredDevPoints > 0) (currentDevPoints.toFloat() / requiredDevPoints).coerceIn(0f, 1f) else 1f

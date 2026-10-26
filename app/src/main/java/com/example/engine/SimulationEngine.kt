@@ -63,7 +63,9 @@ object SimulationEngine {
 
         // 5. Server health & Outages
         val totalActiveUsers = updatedProducts.filter { it.stage == ProductStage.LIVE }.sumOf { it.activeUsers }
-        val updatedServer = processServerHour(state.server, totalActiveUsers, sysadminCount)
+        val serverTechBonus = calculateServerCapacityBonus(state)
+        val serverWithTech = state.server.copy(techCapacityBonus = serverTechBonus)
+        val updatedServer = processServerHour(serverWithTech, totalActiveUsers, sysadminCount)
 
         // 6. Financial tracking for current hour
         val currentCash = state.cash + hourlyProductRevenue + milestonePayouts - (hourlyMarketingSpend / 24.0)
@@ -84,6 +86,7 @@ object SimulationEngine {
         var finalProducts = updatedProducts
         var finalContracts = updatedContracts
         var finalCompetitors = state.competitors
+        var finalMilestones = state.milestones
         var newNotifications = state.notifications.toMutableList()
         var newEvent = state.pendingEvent
         var graceDays = state.bankruptcyGraceDays
@@ -110,13 +113,17 @@ object SimulationEngine {
                 if (nextDays <= 0) null else loan.copy(daysRemaining = nextDays)
             }
 
-            finalCash -= (dailyPayroll + dailyRent + dailyServerCost + loanDeductions)
+            val dailyOperatingProfit = (ledger.productRevenue + ledger.contractRevenue) - (dailyPayroll + dailyRent + dailyServerCost + loanDeductions)
+            val corporateTax = if (dailyOperatingProfit > 2000.0) (dailyOperatingProfit * 0.12).coerceAtLeast(0.0) else 0.0
+
+            finalCash -= (dailyPayroll + dailyRent + dailyServerCost + loanDeductions + corporateTax)
 
             ledger = ledger.copy(
                 payrollExpenses = dailyPayroll,
                 rentExpenses = dailyRent,
                 serverExpenses = dailyServerCost,
-                loanRepaymentExpenses = loanDeductions
+                loanRepaymentExpenses = loanDeductions,
+                taxExpenses = corporateTax
             )
 
             // Record into financial history (keep up to 14 days)
@@ -159,8 +166,7 @@ object SimulationEngine {
                         processedContracts.add(contract.copy(status = ContractStatus.FAILED, daysRemaining = 0))
                     } else if (contract.isDeliverable && !contract.isDelivered) {
                         // Deliver fully completed contract on day rollover
-                        val alreadyPaidReward = contract.milestones.find { it.id == 3 || it.targetPercent >= 1.0f }?.isCompleted == true
-                        val payout = if (alreadyPaidReward) 0.0 else contract.completionReward
+                        val payout = if (contract.isRewardPaid) 0.0 else contract.completionReward
                         finalCash += payout
                         finalReputation = (finalReputation + contract.reputationGain).coerceAtMost(500)
                         newNotifications.add(
@@ -171,6 +177,7 @@ object SimulationEngine {
                             contract.copy(
                                 status = ContractStatus.COMPLETED,
                                 isDelivered = true,
+                                isRewardPaid = true,
                                 milestones = contract.milestones.map { it.copy(isCompleted = true) }
                             )
                         )
@@ -250,10 +257,9 @@ object SimulationEngine {
                     currentReviews.add(0, review)
                 }
 
-                // Feature progression: if a feature is under development and engineers are assigned
-                val hasEngineersAssigned = updatedEmployees.any { it.assignedProductId == prod.id && it.state == EmployeeState.WORKING && (it.role == EmployeeRole.DEVELOPER || it.role == EmployeeRole.DESIGNER) }
+                // Feature progression: if a feature is ready to deploy
                 val updatedFeatures = prod.features.map { feat ->
-                    if (feat.isUnderDevelopment && !feat.isImplemented && hasEngineersAssigned) {
+                    if (feat.isReadyToDeploy && feat.isUnderDevelopment && !feat.isImplemented) {
                         newNotifications.add(0, "✓ Feature Deployed: '${feat.name}' on '${prod.name}' is now active (+${(feat.satisfactionBoost * 100).toInt()}% satisfaction, +$${feat.arpuBoost} ARPU)!")
                         feat.copy(isImplemented = true, isUnderDevelopment = false)
                     } else feat
@@ -265,6 +271,27 @@ object SimulationEngine {
                     customerReviews = currentReviews.take(6),
                     features = updatedFeatures
                 )
+            }
+
+            // Evaluate company long-term milestones
+            finalMilestones = finalMilestones.map { ms ->
+                if (ms.isAchieved) ms else {
+                    val achieved = when (ms.id) {
+                        "ms_first_product" -> finalProducts.any { it.stage == ProductStage.LIVE }
+                        "ms_ten_thousand_users" -> totalActiveUsers >= 10000
+                        "ms_deliver_contract" -> finalContracts.any { it.status == ContractStatus.COMPLETED }
+                        "ms_office_loft" -> state.officeTier.ordinal >= OfficeTier.TECH_LOFT.ordinal
+                        "ms_research_innovator" -> finalUnlockedTech.size >= 4
+                        "ms_market_leader" -> state.marketShare >= 25.0f
+                        "ms_unicorn_status" -> state.valuation >= 1000000.0
+                        "ms_strategic_takeover" -> finalCompetitors.any { it.isAcquired }
+                        else -> false
+                    }
+                    if (achieved) {
+                        newNotifications.add(0, "🏆 MILESTONE UNLOCKED: '${ms.title}' achieved! Claim bonus reward in Tech & Milestones.")
+                        ms.copy(isAchieved = true)
+                    } else ms
+                }
             }
 
             // Refresh candidate recruitment pool every 3 days
@@ -342,6 +369,7 @@ object SimulationEngine {
             availableCandidates = finalCandidates,
             activeResearch = finalResearch,
             unlockedTechIds = finalUnlockedTech,
+            milestones = finalMilestones,
             notifications = newNotifications,
             pendingEvent = newEvent,
             bankruptcyGraceDays = graceDays,
@@ -595,6 +623,50 @@ object SimulationEngine {
                     val hourlyRev = (nextUsers * (prod.effectiveARPU / 24.0) * revenueMultiplier)
                     totalHourlyRevenue += hourlyRev
 
+                    val activeFeature = prod.features.find { it.isUnderDevelopment && !it.isImplemented }
+                    val featuresAfterWork = if (activeFeature != null && isWorkHour && assignedStaff.isNotEmpty()) {
+                        var addDev = 0
+                        var addDesign = 0
+                        var addQA = 0
+                        for (staff in assignedStaff) {
+                            val score = staff.effectiveProductivity
+                            when (staff.role) {
+                                EmployeeRole.DESIGNER -> addDesign += (score * 4.0f * (1f + designBonus)).toInt().coerceAtLeast(1)
+                                EmployeeRole.DEVELOPER -> {
+                                    addDev += (score * 4.5f * (1f + devBonus)).toInt().coerceAtLeast(1)
+                                    if (activeFeature.designPointsCurrent < activeFeature.designPointsReq) {
+                                        addDesign += (score * 1.5f).toInt().coerceAtLeast(1)
+                                    }
+                                    if (activeFeature.qaPointsCurrent < activeFeature.qaPointsReq) {
+                                        addQA += (score * 1.5f).toInt().coerceAtLeast(1)
+                                    }
+                                }
+                                EmployeeRole.QA_TESTER -> addQA += (score * 4.5f).toInt().coerceAtLeast(1)
+                                EmployeeRole.PROJECT_MANAGER -> {
+                                    addDev += 1
+                                    addDesign += 1
+                                    addQA += 1
+                                }
+                                else -> {}
+                            }
+                        }
+                        prod.features.map { feat ->
+                            if (feat.id == activeFeature.id) {
+                                val nd = (feat.devPointsCurrent + addDev).coerceAtMost(feat.devPointsReq)
+                                val ng = (feat.designPointsCurrent + addDesign).coerceAtMost(feat.designPointsReq)
+                                val nq = (feat.qaPointsCurrent + addQA).coerceAtMost(feat.qaPointsReq)
+                                val ready = nd >= feat.devPointsReq && ng >= feat.designPointsReq && nq >= feat.qaPointsReq
+                                feat.copy(
+                                    devPointsCurrent = nd,
+                                    designPointsCurrent = ng,
+                                    qaPointsCurrent = nq,
+                                    isImplemented = ready,
+                                    isUnderDevelopment = !ready
+                                )
+                            } else feat
+                        }
+                    } else prod.features
+
                     prod.copy(
                         activeUsers = nextUsers,
                         dailyRevenue = prod.dailyRevenue + hourlyRev,
@@ -602,7 +674,8 @@ object SimulationEngine {
                         userSatisfaction = nextSatisfaction,
                         bugsCount = (prod.bugsCount - squashedBugs).coerceAtLeast(0),
                         bugsSquashed = prod.bugsSquashed + squashedBugs,
-                        activeCampaigns = updatedCampaigns
+                        activeCampaigns = updatedCampaigns,
+                        features = featuresAfterWork
                     )
                 }
 
@@ -633,13 +706,45 @@ object SimulationEngine {
                     val isCleaned = nextBugs == 0 && nextDebt == 0
                     val nextStage = if (isCleaned) ProductStage.LIVE else ProductStage.MAINTENANCE
 
+                    val activeFeature = prod.features.find { it.isUnderDevelopment && !it.isImplemented }
+                    val featuresAfterWork = if (activeFeature != null && isWorkHour && assignedStaff.isNotEmpty()) {
+                        var addDev = 0
+                        var addDesign = 0
+                        var addQA = 0
+                        for (staff in assignedStaff) {
+                            val score = staff.effectiveProductivity
+                            when (staff.role) {
+                                EmployeeRole.DESIGNER -> addDesign += (score * 3.5f).toInt().coerceAtLeast(1)
+                                EmployeeRole.DEVELOPER -> addDev += (score * 4.0f).toInt().coerceAtLeast(1)
+                                EmployeeRole.QA_TESTER -> addQA += (score * 4.0f).toInt().coerceAtLeast(1)
+                                else -> {}
+                            }
+                        }
+                        prod.features.map { feat ->
+                            if (feat.id == activeFeature.id) {
+                                val nd = (feat.devPointsCurrent + addDev).coerceAtMost(feat.devPointsReq)
+                                val ng = (feat.designPointsCurrent + addDesign).coerceAtMost(feat.designPointsReq)
+                                val nq = (feat.qaPointsCurrent + addQA).coerceAtMost(feat.qaPointsReq)
+                                val ready = nd >= feat.devPointsReq && ng >= feat.designPointsReq && nq >= feat.qaPointsReq
+                                feat.copy(
+                                    devPointsCurrent = nd,
+                                    designPointsCurrent = ng,
+                                    qaPointsCurrent = nq,
+                                    isImplemented = ready,
+                                    isUnderDevelopment = !ready
+                                )
+                            } else feat
+                        }
+                    } else prod.features
+
                     prod.copy(
                         stage = nextStage,
                         bugsCount = nextBugs,
                         techDebt = nextDebt,
                         userSatisfaction = nextSatisfaction,
                         dailyRevenue = prod.dailyRevenue + hourlyRev,
-                        totalRevenue = prod.totalRevenue + hourlyRev
+                        totalRevenue = prod.totalRevenue + hourlyRev,
+                        features = featuresAfterWork
                     )
                 }
             }
@@ -726,14 +831,21 @@ object SimulationEngine {
                 }
             }
 
-            if (isContractFinished || (nextDev >= contract.requiredDevPoints && nextDesign >= contract.requiredDesignPoints && nextQA >= contract.requiredQAPoints)) {
+            val isFullyDone = isContractFinished || (nextDev >= contract.requiredDevPoints && nextDesign >= contract.requiredDesignPoints && nextQA >= contract.requiredQAPoints)
+            if (isFullyDone) {
                 val repGain = (contract.reputationGain * (if (salesStaff.isNotEmpty()) 1.25f else 1.0f)).toInt()
-                val finalPayout = contract.completionReward * salesMultiplier
+                val isFinalMilestonePaid = updatedMilestones.any { it.targetPercent >= 1.0f && it.isCompleted }
+                val finalPayout = if (contract.isRewardPaid || isFinalMilestonePaid) 0.0 else (contract.completionReward * salesMultiplier)
+                if (finalPayout > 0) {
+                    milestonePayouts += finalPayout
+                }
                 totalRepGain += repGain
-                notifications.add("✓ CONTRACT COMPLETE: Delivered '${contract.title}' to ${contract.clientName}! Payout: +$${finalPayout.toInt()}, +${repGain} Rep!")
+                val totalDeliveryAmount = (if (isFinalMilestonePaid) updatedMilestones.find { it.targetPercent >= 1.0f }?.rewardPayout ?: 0.0 else finalPayout).toInt()
+                notifications.add("✓ CONTRACT COMPLETE: Delivered '${contract.title}' to ${contract.clientName}! Payout: +$${totalDeliveryAmount}, +${repGain} Rep!")
                 contract.copy(
                     status = ContractStatus.COMPLETED,
                     isDelivered = true,
+                    isRewardPaid = true,
                     currentDevPoints = nextDev,
                     currentDesignPoints = nextDesign,
                     currentQAPoints = nextQA,
@@ -880,7 +992,16 @@ object SimulationEngine {
     private fun calculateBugReduction(state: GameState): Float {
         var factor = 0f
         if (state.unlockedTechIds.contains("ci_cd")) factor += 0.50f
+        if (state.unlockedTechIds.contains("enterprise_security")) factor += 0.30f
         return factor
+    }
+
+    private fun calculateServerCapacityBonus(state: GameState): Float {
+        var bonus = 0f
+        if (state.unlockedTechIds.contains("container_k8s")) bonus += 0.35f
+        if (state.unlockedTechIds.contains("global_edge_cdn")) bonus += 0.50f
+        if (state.unlockedTechIds.contains("multi_region_cloud")) bonus += 0.70f
+        return bonus
     }
 
     private fun generateFreshCandidates(level: Int): List<Employee> {
@@ -988,7 +1109,7 @@ object SimulationEngine {
     }
 
     private fun generateRandomEvent(state: GameState, totalUsers: Int): GameEvent? {
-        val eventType = Random.nextInt(6)
+        val eventType = Random.nextInt(7)
         return when (eventType) {
             0 -> {
                 val investmentAmount = (state.valuation * 0.12).coerceIn(20000.0, 300000.0)
@@ -1099,7 +1220,7 @@ object SimulationEngine {
                     )
                 )
             }
-            else -> {
+            5 -> {
                 GameEvent(
                     id = "event_ddos_attack",
                     title = "Suspicious Cyber Attack Detected",
@@ -1115,6 +1236,27 @@ object SimulationEngine {
                         GameEventOption(
                             label = "Let DevOps Handle It",
                             description = "Sysadmins attempt mitigation.",
+                            actionType = EventActionType.DISMISS
+                        )
+                    )
+                )
+            }
+            else -> {
+                GameEvent(
+                    id = "event_security_audit",
+                    title = "Critical Security CVE Disclosed",
+                    description = "An upstream open-source dependency has a remote code execution vulnerability. Deploy rapid emergency hotfix for $1,200 or patch internally with delayed sprint velocity?",
+                    iconName = "Security",
+                    options = listOf(
+                        GameEventOption(
+                            label = "Pay $1,200 Rapid Hotfix",
+                            description = "Deploys patch immediately without downtime or bugs.",
+                            actionType = EventActionType.PAY_FIX,
+                            amount = 1200.0
+                        ),
+                        GameEventOption(
+                            label = "Patch with In-House Staff",
+                            description = "Saves cash but incurs technical debt.",
                             actionType = EventActionType.DISMISS
                         )
                     )

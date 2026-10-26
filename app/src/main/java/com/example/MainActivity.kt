@@ -404,7 +404,8 @@ fun StartupEmpireGameScreen(
                                     onRepayLoanEarly = { loan -> viewModel.repayLoanEarly(loan) },
                                     onStartResearch = { tech -> viewModel.startResearch(tech) },
                                     onAcquireCompetitor = { compId -> viewModel.acquireCompetitor(compId) },
-                                    onSellEquity = { pct -> viewModel.sellEquityForCapital(pct) }
+                                    onSellEquity = { pct -> viewModel.sellEquityForCapital(pct) },
+                                    onClaimMilestone = { mId -> viewModel.claimMilestone(mId) }
                                 )
                             }
                         }

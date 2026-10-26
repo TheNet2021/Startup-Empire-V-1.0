@@ -124,8 +124,26 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun continueGame() {
         val loaded = GameStorage.loadGame(getApplication())
-        _gameState.value = loaded
-        _saveSummary.value = GameStorage.getSaveSummary(getApplication())
+        val summary = GameStorage.getSaveSummary(getApplication())
+        val lastTimestamp = summary?.savedAtTimestamp ?: System.currentTimeMillis()
+        val elapsedMillis = (System.currentTimeMillis() - lastTimestamp).coerceAtLeast(0)
+        val elapsedHours = (elapsedMillis / (1000 * 3600)).toInt().coerceIn(0, 24)
+
+        val finalLoadedState = if (elapsedHours > 0) {
+            val progressed = SimulationEngine.tick(loaded, elapsedHours)
+            val revenueDelta = progressed.cash - loaded.cash
+            val returnNote = if (revenueDelta >= 0) {
+                "Welcome back! While you were offline for $elapsedHours hours, your team generated +$%,.0f net cash.".format(revenueDelta)
+            } else {
+                "Welcome back! Offline for $elapsedHours hours. Overhead costs -$%,.0f deducted.".format(-revenueDelta)
+            }
+            progressed.copy(notifications = listOf(returnNote) + progressed.notifications.take(29))
+        } else {
+            loaded
+        }
+
+        _gameState.value = finalLoadedState
+        _saveSummary.value = summary
         _appScreen.value = AppScreen.GAMEPLAY
         com.example.audio.SoundManager.playConfirm()
     }
@@ -582,6 +600,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startFeatureDevelopment(productId: String, featureId: String) {
         val state = _gameState.value
+        val cost = 450.0 // Tooling, licenses & sprint setup
+        if (state.cash < cost) {
+            showToast("Insufficient funds! Feature sprint setup costs $450.")
+            return
+        }
         val updatedProducts = state.products.map { prod ->
             if (prod.id == productId) {
                 val updatedFeatures = prod.features.map { feat ->
@@ -590,9 +613,40 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 prod.copy(features = updatedFeatures)
             } else prod
         }
-        _gameState.value = state.copy(products = updatedProducts)
-        showToast("Feature queued! Assigned engineers will build it.")
+        _gameState.value = state.copy(
+            cash = state.cash - cost,
+            products = updatedProducts,
+            notifications = listOf("Queued feature sprint for $450 tooling setup.") + state.notifications
+        )
+        showToast("Feature queued (-$450)! Assigned engineers will build it.")
         com.example.audio.SoundManager.playClick()
+        saveGameInternal()
+    }
+
+    fun claimMilestone(milestoneId: String) {
+        val state = _gameState.value
+        val milestone = state.milestones.find { it.id == milestoneId } ?: return
+        if (!milestone.isAchieved) {
+            showToast("Milestone objectives not met yet!")
+            return
+        }
+        if (milestone.isClaimed) {
+            showToast("Milestone reward already claimed!")
+            return
+        }
+
+        val updatedMilestones = state.milestones.map {
+            if (it.id == milestoneId) it.copy(isClaimed = true) else it
+        }
+
+        _gameState.value = state.copy(
+            cash = state.cash + milestone.rewardCash,
+            reputation = (state.reputation + milestone.rewardReputation).coerceAtMost(500),
+            milestones = updatedMilestones,
+            notifications = listOf("CLAIMED MILESTONE: '${milestone.title}'! +$%,.0f, +%d Rep.".format(milestone.rewardCash, milestone.rewardReputation)) + state.notifications
+        )
+        showToast("Claimed '${milestone.title}'! +$%,.0f, +%d Rep.".format(milestone.rewardCash, milestone.rewardReputation))
+        com.example.audio.SoundManager.playCash()
         saveGameInternal()
     }
 
@@ -691,6 +745,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     status = ContractStatus.COMPLETED,
                     isDelivered = true,
+                    isRewardPaid = true,
                     milestones = it.milestones.map { ms -> ms.copy(isCompleted = true) }
                 )
             } else it
@@ -702,15 +757,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         // Spawn a new higher-tier or fresh contract
         val freshContracts = SimulationEngine.generateFreshContracts(state.reputation + contract.reputationGain)
+        val finalPayout = if (contract.isRewardPaid) 0.0 else contract.completionReward
 
         _gameState.value = state.copy(
-            cash = state.cash + contract.completionReward,
+            cash = state.cash + finalPayout,
             reputation = (state.reputation + contract.reputationGain).coerceAtMost(500),
             contracts = updatedContracts + freshContracts,
             employees = updatedEmployees,
-            notifications = listOf("✓ DELIVERED: '${contract.title}' to ${contract.clientName}! Received final reward +$%,.0f, +%d Rep.".format(contract.completionReward, contract.reputationGain)) + state.notifications
+            notifications = listOf("✓ DELIVERED: '${contract.title}' to ${contract.clientName}! Received final reward +$%,.0f, +%d Rep.".format(finalPayout, contract.reputationGain)) + state.notifications
         )
-        showToast("Delivered '${contract.title}'! +$%,.0f".format(contract.completionReward))
+        showToast("Delivered '${contract.title}'! +$%,.0f".format(finalPayout))
         com.example.audio.SoundManager.playLaunch()
         saveGameInternal()
     }
@@ -976,6 +1032,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun takeLoan(amount: Double, days: Int, dailyPayment: Double, lender: String) {
         val state = _gameState.value
+        val currentDebt = state.activeLoans.sumOf { it.remainingBalance }
+        val maxDebt = (state.valuation * 0.55).coerceIn(40000.0, 300000.0)
+        if (currentDebt + amount > maxDebt) {
+            showToast("Credit limit reached! Max borrowing limit is $%,.0f.".format(maxDebt))
+            return
+        }
         val newLoan = ActiveLoan(
             id = "loan_${System.currentTimeMillis()}",
             lender = lender,

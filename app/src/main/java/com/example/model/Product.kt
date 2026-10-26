@@ -177,6 +177,47 @@ data class MarketResearchReport(
     val competitorDensity: String = "2 Active Rivals"
 )
 
+data class ProductIdea(
+    val id: String,
+    val name: String,
+    val category: ProductCategory,
+    val tagLine: String,
+    val description: String,
+    val demandScore: Float,
+    val targetAudience: String,
+    val suggestedMonetization: MonetizationModel
+)
+
+fun defaultIdeasForCategory(category: ProductCategory): List<ProductIdea> {
+    return when (category) {
+        ProductCategory.SOCIAL_APP -> listOf(
+            ProductIdea("idea_social_1", "Sphere Social", ProductCategory.SOCIAL_APP, "Next-gen interest graph", "Ephemeral multimedia feeds with high viral loops.", 1.25f, "Gen-Z & Creators", MonetizationModel.FREE_WITH_ADS),
+            ProductIdea("idea_social_2", "AudioClub", ProductCategory.SOCIAL_APP, "Live voice lounges", "Drop-in synchronous audio discussions for tech communities.", 1.10f, "Tech Professionals", MonetizationModel.FREEMIUM),
+            ProductIdea("idea_social_3", "DevCircle", ProductCategory.SOCIAL_APP, "Code portfolio & peer reviews", "Developer network with interactive snippet showcases.", 1.30f, "Software Engineers", MonetizationModel.FREEMIUM)
+        )
+        ProductCategory.SAAS_TOOL -> listOf(
+            ProductIdea("idea_saas_1", "WorkFlow Pro", ProductCategory.SAAS_TOOL, "Sprint & issue tracker", "Agile kanban with automated git branch syncing.", 1.15f, "SMB Tech Teams", MonetizationModel.SUBSCRIPTION),
+            ProductIdea("idea_saas_2", "CloudLedger", ProductCategory.SAAS_TOOL, "Automated startup accounting", "One-click corporate tax filings & burn rate analytics.", 1.20f, "Founders & CFOs", MonetizationModel.SUBSCRIPTION),
+            ProductIdea("idea_saas_3", "API Gateway 360", ProductCategory.SAAS_TOOL, "Enterprise microservice routing", "Low-latency edge caching with SOC2 compliance.", 1.35f, "Enterprise IT Admins", MonetizationModel.ENTERPRISE)
+        )
+        ProductCategory.MOBILE_GAME -> listOf(
+            ProductIdea("idea_game_1", "PixelQuest RPG", ProductCategory.MOBILE_GAME, "Retro isometric crawler", "Dungeon looter with battle pass cosmetics & weekly boss raids.", 1.30f, "Casual & Core Gamers", MonetizationModel.FREEMIUM),
+            ProductIdea("idea_game_2", "CyberCity 2099", ProductCategory.MOBILE_GAME, "Sci-fi idle builder", "Incremental resource tycoon with cybernetic enhancements.", 1.15f, "Mobile Gamers", MonetizationModel.FREEMIUM),
+            ProductIdea("idea_game_3", "SpeedDrift Legends", ProductCategory.MOBILE_GAME, "Synchronous multiplayer racer", "Real-time physics drift battles with car customization.", 1.25f, "Competitive Mobile Players", MonetizationModel.FREE_WITH_ADS)
+        )
+        ProductCategory.ECOMMERCE -> listOf(
+            ProductIdea("idea_ecom_1", "CartWave Direct", ProductCategory.ECOMMERCE, "Curated creator marketplace", "Fast social commerce with 1-click video checkout.", 1.10f, "Online Shoppers", MonetizationModel.FREEMIUM),
+            ProductIdea("idea_ecom_2", "B2B Wholesale Hub", ProductCategory.ECOMMERCE, "Bulk vendor procurement", "Supply chain ordering platform with invoice credit terms.", 1.25f, "Commercial Retailers", MonetizationModel.ENTERPRISE),
+            ProductIdea("idea_ecom_3", "ArtisanCraft", ProductCategory.ECOMMERCE, "Handmade goods exchange", "Direct-from-maker boutique platform with buyer protection.", 1.05f, "Craft Enthusiasts", MonetizationModel.FREEMIUM)
+        )
+        ProductCategory.AI_ASSISTANT -> listOf(
+            ProductIdea("idea_ai_1", "OmniMind AI", ProductCategory.AI_ASSISTANT, "Autonomous task orchestrator", "Executes multi-step browser workflows and code generation.", 1.45f, "Knowledge Workers", MonetizationModel.SUBSCRIPTION),
+            ProductIdea("idea_ai_2", "NeuralScribe", ProductCategory.AI_ASSISTANT, "Meeting intelligence assistant", "Real-time multilingual transcription with actionable Jira summaries.", 1.35f, "Corporate Executives", MonetizationModel.ENTERPRISE),
+            ProductIdea("idea_ai_3", "CodeCompanion", ProductCategory.AI_ASSISTANT, "Local IDE neural copilot", "Privacy-first on-device code autocomplete & refactoring.", 1.40f, "Software Developers", MonetizationModel.SUBSCRIPTION)
+        )
+    }
+}
+
 data class ProductFeature(
     val id: String,
     val name: String,
@@ -186,9 +227,24 @@ data class ProductFeature(
     val qaPointsReq: Int,
     val satisfactionBoost: Float,
     val arpuBoost: Double,
+    val devPointsCurrent: Int = 0,
+    val designPointsCurrent: Int = 0,
+    val qaPointsCurrent: Int = 0,
     val isImplemented: Boolean = false,
     val isUnderDevelopment: Boolean = false
-)
+) {
+    val progress: Float get() {
+        val total = devPointsReq + designPointsReq + qaPointsReq
+        if (total <= 0) return 1f
+        val current = devPointsCurrent + designPointsCurrent + qaPointsCurrent
+        return (current.toFloat() / total).coerceIn(0f, 1f)
+    }
+
+    val isReadyToDeploy: Boolean get() =
+        devPointsCurrent >= devPointsReq &&
+        designPointsCurrent >= designPointsReq &&
+        qaPointsCurrent >= qaPointsReq
+}
 
 data class CustomerReview(
     val id: String,

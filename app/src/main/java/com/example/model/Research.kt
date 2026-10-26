@@ -74,6 +74,16 @@ enum class TechUpgrade(
         description = "Engineered referral loops that boost marketing user acquisition by 50%.",
         marketingBoost = 0.50f
     ),
+    ENTERPRISE_SECURITY(
+        id = "enterprise_security",
+        title = "SOC2 Enterprise Security",
+        category = "Security",
+        cost = 24000.0,
+        requiredResearchDays = 7,
+        prereqId = "ci_cd",
+        description = "SOC2 Type II and ISO27001 certifications cutting bug churn by 30% and boosting contract rewards.",
+        bugReductionFactor = 0.30f
+    ),
     GLOBAL_EDGE_CDN(
         id = "global_edge_cdn",
         title = "Global Anycast Edge",
@@ -83,6 +93,16 @@ enum class TechUpgrade(
         prereqId = "container_k8s",
         description = "Sub-10ms global edge network reducing latency and doubling server throughput.",
         serverCapacityBonus = 0.50f
+    ),
+    MULTI_REGION_CLOUD(
+        id = "multi_region_cloud",
+        title = "Multi-Region Elastic Grid",
+        category = "Infrastructure",
+        cost = 55000.0,
+        requiredResearchDays = 10,
+        prereqId = "global_edge_cdn",
+        description = "Automated geo-distributed cluster failover expanding server physical capacity by 70%.",
+        serverCapacityBonus = 0.70f
     ),
     QUANTUM_ARCH(
         id = "quantum_arch",

@@ -28,9 +28,10 @@ data class DailyLedger(
     val rentExpenses: Double = 0.0,
     val serverExpenses: Double = 0.0,
     val marketingExpenses: Double = 0.0,
-    val loanRepaymentExpenses: Double = 0.0
+    val loanRepaymentExpenses: Double = 0.0,
+    val taxExpenses: Double = 0.0
 ) {
     val totalRevenue: Double get() = productRevenue + contractRevenue
-    val totalExpenses: Double get() = payrollExpenses + rentExpenses + serverExpenses + marketingExpenses + loanRepaymentExpenses
+    val totalExpenses: Double get() = payrollExpenses + rentExpenses + serverExpenses + marketingExpenses + loanRepaymentExpenses + taxExpenses
     val netProfit: Double get() = totalRevenue - totalExpenses
 }
