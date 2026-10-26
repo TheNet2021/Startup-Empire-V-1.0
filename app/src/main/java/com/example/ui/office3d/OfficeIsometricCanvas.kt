@@ -1015,6 +1015,7 @@ private fun DrawScope.drawDetailedEmployee(
         EmployeeRole.MARKETER -> Color(0xFFF59E0B)
         EmployeeRole.SYSADMIN -> Color(0xFF38BDF8)
         EmployeeRole.PROJECT_MANAGER -> Color(0xFFA855F7)
+        EmployeeRole.SALES -> Color(0xFF22C55E)
     }
     drawCircle(dotColor, radius = 4f * s, center = Offset(centerX, bubbleY))
 }
