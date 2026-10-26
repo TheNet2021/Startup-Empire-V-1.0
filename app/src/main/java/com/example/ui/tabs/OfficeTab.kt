@@ -1,25 +1,32 @@
 package com.example.ui.tabs
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
+import com.example.audio.SoundManager
 import com.example.model.*
 
 @Composable
@@ -48,19 +55,28 @@ fun OfficeTab(
         ) {
             Tab(
                 selected = selectedOfficeSubtab == 0,
-                onClick = { selectedOfficeSubtab = 0 },
+                onClick = {
+                    SoundManager.playClick()
+                    selectedOfficeSubtab = 0
+                },
                 text = { Text("Shop Catalog", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                 modifier = Modifier.testTag("subtab_office_shop")
             )
             Tab(
                 selected = selectedOfficeSubtab == 1,
-                onClick = { selectedOfficeSubtab = 1 },
+                onClick = {
+                    SoundManager.playClick()
+                    selectedOfficeSubtab = 1
+                },
                 text = { Text("Placed Items (${state.furniture.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                 modifier = Modifier.testTag("subtab_office_placed")
             )
             Tab(
                 selected = selectedOfficeSubtab == 2,
-                onClick = { selectedOfficeSubtab = 2 },
+                onClick = {
+                    SoundManager.playClick()
+                    selectedOfficeSubtab = 2
+                },
                 text = { Text("Relocation", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                 modifier = Modifier.testTag("subtab_office_relocate")
             )
@@ -75,22 +91,111 @@ fun OfficeTab(
                         .padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Quick Capacity Bar
+                    // Commercial Visual Hero Banner
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
+                            shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, Color(0xFF1E293B)),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceAround
+                                    .height(115.dp)
                             ) {
-                                OfficeStatPill("Office Tier", state.officeTier.title)
-                                OfficeStatPill("Workstations", "${state.employees.size} / ${state.totalWorkstations} (${state.officeTier.maxDesks} max)")
-                                OfficeStatPill("Monthly Rent", "$%,.0f".format(state.officeTier.monthlyRent))
+                                Image(
+                                    painter = painterResource(id = R.drawable.img_office_shop_banner),
+                                    contentDescription = "Office Showroom Banner",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color(0x55090D16),
+                                                    Color(0xDD090D16),
+                                                    Color(0xFF090D16)
+                                                )
+                                            )
+                                        )
+                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "OFFICE STORE & DEPOT",
+                                                color = Color(0xFF00E5FF),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                letterSpacing = 1.sp
+                                            )
+                                            Text(
+                                                text = "Premium Tech Furniture & Gear",
+                                                color = Color.White,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFF10B981).copy(alpha = 0.25f),
+                                            border = BorderStroke(1.dp, Color(0xFF10B981))
+                                        ) {
+                                            Text(
+                                                text = "$%,.0f Cash".format(state.cash),
+                                                color = Color(0xFF34D399),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Text(
+                                            text = "HQ: ${state.officeTier.title}",
+                                            color = Color(0xFFCBD5E1),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "•",
+                                            color = Color(0xFF64748B),
+                                            fontSize = 10.sp
+                                        )
+                                        Text(
+                                            text = "Desks: ${state.totalWorkstations}/${state.officeTier.maxDesks}",
+                                            color = if (state.totalWorkstations >= state.officeTier.maxDesks) Color(0xFFFBBF24) else Color(0xFF38BDF8),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "•",
+                                            color = Color(0xFF64748B),
+                                            fontSize = 10.sp
+                                        )
+                                        Text(
+                                            text = "Rent: $%,.0f/mo".format(state.officeTier.monthlyRent),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -103,18 +208,25 @@ fun OfficeTab(
                         ) {
                             FilterChip(
                                 selected = selectedCategory == null,
-                                onClick = { selectedCategory = null },
-                                label = { Text("All", fontSize = 11.sp) },
+                                onClick = {
+                                    SoundManager.playClick()
+                                    selectedCategory = null
+                                },
+                                label = { Text("All (${FurnitureType.entries.size})", fontSize = 11.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Color(0xFF00E5FF),
                                     selectedLabelColor = Color(0xFF090D16)
                                 )
                             )
                             FurnitureCategory.entries.forEach { cat ->
+                                val count = FurnitureType.entries.count { it.category == cat }
                                 FilterChip(
                                     selected = selectedCategory == cat,
-                                    onClick = { selectedCategory = cat },
-                                    label = { Text(cat.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 11.sp) },
+                                    onClick = {
+                                        SoundManager.playClick()
+                                        selectedCategory = cat
+                                    },
+                                    label = { Text("${cat.name.lowercase().replaceFirstChar { it.uppercase() }} ($count)", fontSize = 11.sp) },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = Color(0xFF00E5FF),
                                         selectedLabelColor = Color(0xFF090D16)
@@ -136,17 +248,51 @@ fun OfficeTab(
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
                             border = BorderStroke(1.dp, Color(0xFF1E293B)),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // High-contrast visual preview badge
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = when (furn.category) {
+                                        FurnitureCategory.WORKSTATION -> Color(0xFF1E3A8A)
+                                        FurnitureCategory.INFRASTRUCTURE -> Color(0xFF064E3B)
+                                        FurnitureCategory.AMENITY -> Color(0xFF701A75)
+                                        FurnitureCategory.DECORATION -> Color(0xFF78350F)
+                                    },
+                                    border = BorderStroke(
+                                        1.dp,
+                                        when (furn.category) {
+                                            FurnitureCategory.WORKSTATION -> Color(0xFF38BDF8)
+                                            FurnitureCategory.INFRASTRUCTURE -> Color(0xFF34D399)
+                                            FurnitureCategory.AMENITY -> Color(0xFFF472B6)
+                                            FurnitureCategory.DECORATION -> Color(0xFFFBBF24)
+                                        }
+                                    ),
+                                    modifier = Modifier.size(54.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = getFurnitureIcon(furn),
+                                            contentDescription = furn.title,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+
+                                // Details Column
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
                                         Text(
                                             text = furn.title,
                                             color = Color.White,
@@ -161,25 +307,30 @@ fun OfficeTab(
                                                 text = furn.category.name,
                                                 color = Color(0xFF94A3B8),
                                                 fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold,
                                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Spacer(modifier = Modifier.height(3.dp))
                                     Text(
                                         text = furn.description,
-                                        color = Color(0xFF94A3B8),
-                                        fontSize = 11.sp
+                                        color = Color(0xFFCBD5E1),
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp
                                     )
+
+                                    // Strategic perks
                                     if (furn.productivityBonus > 0f || furn.moraleBonus > 0 || furn.userCapacityBoost > 0) {
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             if (furn.productivityBonus > 0f) {
                                                 Text(
-                                                    text = "+${(furn.productivityBonus * 100).toInt()}% Dev Speed",
+                                                    text = "+${(furn.productivityBonus * 100).toInt()}% Velocity",
                                                     color = Color(0xFF38BDF8),
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.SemiBold
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
                                             if (furn.moraleBonus > 0) {
@@ -187,7 +338,7 @@ fun OfficeTab(
                                                     text = "+${furn.moraleBonus} Morale",
                                                     color = Color(0xFFF472B6),
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.SemiBold
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
                                             if (furn.userCapacityBoost > 0) {
@@ -195,31 +346,43 @@ fun OfficeTab(
                                                     text = "+$%,d Users".format(furn.userCapacityBoost),
                                                     color = Color(0xFF34D399),
                                                     fontSize = 10.sp,
-                                                    fontWeight = FontWeight.SemiBold
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
                                         }
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.width(10.dp))
-
+                                // Purchase Action Button
                                 Button(
-                                    onClick = { onBuyFurniture(furn) },
+                                    onClick = {
+                                        SoundManager.playClick()
+                                        onBuyFurniture(furn)
+                                    },
                                     enabled = canAfford && !deskLimitReached,
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFF10B981),
                                         disabledContainerColor = Color(0xFF1E293B)
                                     ),
                                     shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     modifier = Modifier.testTag("buy_furniture_${furn.name.lowercase()}")
                                 ) {
-                                    Text(
-                                        text = if (deskLimitReached) "Max Desks" else "$%,.0f".format(furn.cost),
-                                        color = if (canAfford && !deskLimitReached) Color.White else Color(0xFF64748B),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = if (deskLimitReached) "Max Desks" else "$%,.0f".format(furn.cost),
+                                            color = if (canAfford && !deskLimitReached) Color.White else Color(0xFF64748B),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (!deskLimitReached && canAfford) {
+                                            Text(
+                                                text = "Purchase",
+                                                color = Color.White.copy(alpha = 0.8f),
+                                                fontSize = 9.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -273,7 +436,7 @@ fun OfficeTab(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "Tile (${item.gridX}, ${item.gridY}) - ${item.type.category.name}",
+                                        text = "Tile (${item.gridX}, ${item.gridY}) • ${item.type.category.name}",
                                         color = Color(0xFF94A3B8),
                                         fontSize = 11.sp
                                     )
@@ -309,7 +472,7 @@ fun OfficeTab(
             }
 
             2 -> {
-                // RELOCATION
+                // RELOCATION - ENHANCED WITH 3D HEADQUARTERS RENDERS
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -332,7 +495,6 @@ fun OfficeTab(
 
                     items(OfficeTier.entries) { tier ->
                         val isCurrent = state.officeTier == tier
-                        val isPast = tier.ordinal < state.officeTier.ordinal
                         val meetsLevel = state.companyLevel >= tier.requiredCompanyLevel
                         val meetsUsers = state.totalActiveUsers >= tier.requiredActiveUsers
                         val meetsProducts = state.products.count { it.stage == ProductStage.LIVE } >= tier.requiredLiveProducts
@@ -344,7 +506,6 @@ fun OfficeTab(
                                 containerColor = when {
                                     isCurrent -> Color(0xFF0F2B36)
                                     !isUnlocked -> Color(0xFF0B101D)
-                                    canAfford -> Color(0xFF131B2E)
                                     else -> Color(0xFF131B2E)
                                 }
                             ),
@@ -360,36 +521,69 @@ fun OfficeTab(
                             shape = RoundedCornerShape(14.dp)
                         ) {
                             Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                // 3D Rendered HQ Environment Preview Image
+                                val previewDrawable = getTierPreviewDrawable(tier)
+                                if (previewDrawable != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(130.dp)
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = previewDrawable),
+                                            contentDescription = tier.title,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.verticalGradient(
+                                                        colors = listOf(
+                                                            Color.Transparent,
+                                                            Color(0x990F172A),
+                                                            Color(0xFF0F172A)
+                                                        )
+                                                    )
+                                                )
+                                        )
+                                        if (isCurrent) {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0xFF00E5FF),
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(10.dp)
+                                            ) {
+                                                Text(
+                                                    "ACTIVE HEADQUARTERS",
+                                                    color = Color(0xFF090D16),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = when {
-                                                isCurrent -> Icons.Default.Apartment
-                                                !isUnlocked -> Icons.Default.Lock
-                                                else -> Icons.Default.Business
-                                            },
-                                            contentDescription = null,
-                                            tint = when {
-                                                isCurrent -> Color(0xFF00E5FF)
-                                                !isUnlocked -> Color(0xFF64748B)
-                                                else -> Color(0xFF38BDF8)
-                                            },
-                                            modifier = Modifier.size(22.dp)
-                                        )
                                         Column {
-                                            Text(tier.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                            Text(tier.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                             Text(
                                                 text = "${tier.gridWidth}x${tier.gridHeight} Floor Grid • Max ${tier.maxDesks} Desks",
                                                 color = Color(0xFF94A3B8),
@@ -398,72 +592,61 @@ fun OfficeTab(
                                         }
                                     }
 
-                                    if (isCurrent) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = Color(0xFF00E5FF).copy(alpha = 0.2f),
-                                            border = BorderStroke(1.dp, Color(0xFF00E5FF))
-                                        ) {
-                                            Text(
-                                                "CURRENT HQ",
-                                                color = Color(0xFF00E5FF),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
+                                    Text(tier.description, color = Color(0xFFCBD5E1), fontSize = 11.sp, lineHeight = 15.sp)
+
+                                    // Financial Specs
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Moving Cost: $%,.0f".format(tier.upgradeCost), fontSize = 11.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.SemiBold)
+                                        Text("Monthly Rent: $%,.0f/mo".format(tier.monthlyRent), fontSize = 11.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.SemiBold)
                                     }
-                                }
 
-                                Text(tier.description, color = Color(0xFFCBD5E1), fontSize = 11.sp, lineHeight = 15.sp)
-
-                                // Financial Specs
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Moving Cost: $%,.0f".format(tier.upgradeCost), fontSize = 11.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.SemiBold)
-                                    Text("Monthly Rent: $%,.0f/mo".format(tier.monthlyRent), fontSize = 11.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.SemiBold)
-                                }
-
-                                // Unlock requirements or Action Button
-                                if (!isCurrent) {
-                                    if (!isUnlocked) {
-                                        Surface(
-                                            color = Color(0xFF1E1B4B).copy(alpha = 0.4f),
-                                            shape = RoundedCornerShape(8.dp),
-                                            border = BorderStroke(1.dp, Color(0xFF4338CA).copy(alpha = 0.5f)),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    // Unlock requirements or Action Button
+                                    if (!isCurrent) {
+                                        if (!isUnlocked) {
+                                            Surface(
+                                                color = Color(0xFF1E1B4B).copy(alpha = 0.5f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, Color(0xFF4338CA).copy(alpha = 0.5f)),
+                                                modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFA5B4FC), modifier = Modifier.size(14.dp))
-                                                Text(
-                                                    text = tier.unlockRequirementText,
-                                                    fontSize = 11.sp,
-                                                    color = Color(0xFFA5B4FC)
-                                                )
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFA5B4FC), modifier = Modifier.size(14.dp))
+                                                    Text(
+                                                        text = tier.unlockRequirementText,
+                                                        fontSize = 11.sp,
+                                                        color = Color(0xFFA5B4FC)
+                                                    )
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        Button(
-                                            onClick = { onUpgradeOffice(tier) },
-                                            enabled = canAfford,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (canAfford) Color(0xFF0284C7) else Color(0xFF1E293B)
-                                            ),
-                                            shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .testTag("relocate_${tier.name.lowercase()}")
-                                        ) {
-                                            if (canAfford) {
-                                                Text("Relocate to ${tier.title} ($%,.0f)".format(tier.upgradeCost), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                            } else {
-                                                Text("Insufficient Capital ($%,.0f needed)".format(tier.upgradeCost - state.cash), color = Color(0xFFEF4444), fontSize = 11.sp)
+                                        } else {
+                                            Button(
+                                                onClick = {
+                                                    SoundManager.playClick()
+                                                    onUpgradeOffice(tier)
+                                                },
+                                                enabled = canAfford,
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF00E5FF),
+                                                    disabledContainerColor = Color(0xFF1E293B)
+                                                ),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .testTag("upgrade_office_${tier.name.lowercase()}")
+                                            ) {
+                                                Text(
+                                                    text = if (canAfford) "Relocate & Expand HQ ($%,.0f)".format(tier.upgradeCost) else "Insufficient Funds ($%,.0f)".format(tier.upgradeCost),
+                                                    color = if (canAfford) Color(0xFF090D16) else Color(0xFF64748B),
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp
+                                                )
                                             }
                                         }
                                     }
@@ -476,44 +659,59 @@ fun OfficeTab(
         }
     }
 
-    // Confirmation dialog for selling furniture
-    itemToSell?.let { item ->
-        val refund = item.type.cost * 0.60
+    // Sell Confirmation Dialog
+    if (itemToSell != null) {
+        val target = itemToSell!!
+        val refund = target.type.cost * 0.60
         AlertDialog(
             onDismissRequest = { itemToSell = null },
-            containerColor = Color(0xFF131B2E),
-            title = { Text("Sell ${item.type.title}?", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("Sell ${target.type.title}?") },
             text = {
-                Text(
-                    text = "Are you sure you want to sell this ${item.type.title}? You will receive a 60% cash refund of $%,.0f and free up tile (${item.gridX}, ${item.gridY}).".format(refund),
-                    color = Color(0xFFCBD5E1),
-                    fontSize = 13.sp
-                )
+                Text("This will remove the item from your office floor and refund $%,.0f (60%% of purchase price).".format(refund))
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        onSellFurniture(item.id)
+                        SoundManager.playClick()
+                        onSellFurniture(target.id)
                         itemToSell = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
                 ) {
-                    Text("Confirm Sell", fontWeight = FontWeight.Bold)
+                    Text("Sell for $%,.0f".format(refund), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { itemToSell = null }) {
-                    Text("Cancel", color = Color(0xFF94A3B8))
+                    Text("Cancel")
                 }
-            }
+            },
+            containerColor = Color(0xFF0F172A),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
         )
     }
 }
 
-@Composable
-private fun OfficeStatPill(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, color = Color(0xFF94A3B8), fontSize = 10.sp)
-        Text(text = value, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    }
+private fun getFurnitureIcon(furn: FurnitureType): ImageVector = when (furn) {
+    FurnitureType.DESK_STANDARD -> Icons.Default.Computer
+    FurnitureType.DESK_DUAL_SCREEN -> Icons.Default.DesktopWindows
+    FurnitureType.DESK_EXECUTIVE -> Icons.Default.Monitor
+    FurnitureType.SERVER_RACK_BLADE, FurnitureType.SERVER_RACK_ENTERPRISE -> Icons.Default.Dns
+    FurnitureType.ESPRESSO_MACHINE -> Icons.Default.Coffee
+    FurnitureType.WATER_COOLER -> Icons.Default.WaterDrop
+    FurnitureType.BONSAI_PLANT -> Icons.Default.Yard
+    FurnitureType.WHITEBOARD -> Icons.Default.Dashboard
+    FurnitureType.BOOKSHELF -> Icons.AutoMirrored.Filled.MenuBook
+    FurnitureType.ARCADE_CABINET -> Icons.Default.SportsEsports
+    FurnitureType.RECEPTION_DESK -> Icons.Default.MeetingRoom
+    FurnitureType.MEETING_TABLE -> Icons.Default.Groups
+}
+
+private fun getTierPreviewDrawable(tier: OfficeTier): Int? = when (tier) {
+    OfficeTier.GARAGE -> R.drawable.img_tier_garage
+    OfficeTier.COWORKING -> R.drawable.img_tier_loft // Shared tech incubator
+    OfficeTier.TECH_LOFT -> R.drawable.img_tier_loft
+    OfficeTier.CAMPUS_HQ -> R.drawable.img_tier_campus
+    OfficeTier.CYBER_TOWER -> R.drawable.img_tier_penthouse
 }
