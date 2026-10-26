@@ -31,11 +31,74 @@ object SoundManager {
     private var soundHireId: Int = 0
     private var soundLaunchId: Int = 0
 
-    val TRACK_NAMES = listOf(
-        "Lo-Fi Silicon Chill",
-        "Neon Synthwave",
-        "Coffee Break Acoustic"
+    data class MusicTrack(
+        val id: Int,
+        val title: String,
+        val genre: String,
+        val bpm: Int,
+        val durationStr: String,
+        val vibeEmoji: String,
+        val description: String
     )
+
+    val MUSIC_TRACKS = listOf(
+        MusicTrack(
+            id = 0,
+            title = "Lo-Fi Silicon Chill",
+            genre = "Lo-Fi Study / Chillhop",
+            bpm = 72,
+            durationStr = "0:12",
+            vibeEmoji = "🎧",
+            description = "Warm electric Rhodes keys, vinyl crackle, and relaxing chord progressions for focused coding."
+        ),
+        MusicTrack(
+            id = 1,
+            title = "Neon Synthwave Rush",
+            genre = "Outrun / Retro Synth",
+            bpm = 118,
+            durationStr = "0:08",
+            vibeEmoji = "⚡",
+            description = "Driving 80s arpeggiated bass and gated synths for peak sprint velocity."
+        ),
+        MusicTrack(
+            id = 2,
+            title = "Coffee Break Acoustic",
+            genre = "Acoustic Folk / Cafe",
+            bpm = 90,
+            durationStr = "0:10",
+            vibeEmoji = "☕",
+            description = "Warm acoustic fingerpicking and cafe warmth for mindful UI design and brainstorming."
+        ),
+        MusicTrack(
+            id = 3,
+            title = "Midnight Deep Work",
+            genre = "Deep Ambient Focus",
+            bpm = 64,
+            durationStr = "0:12",
+            vibeEmoji = "🌙",
+            description = "Resonant sub-bass and crystalline shimmer pads for late-night bug-squashing sessions."
+        ),
+        MusicTrack(
+            id = 4,
+            title = "Cyberpunk Hustle",
+            genre = "Cyber Electro / Action",
+            bpm = 126,
+            durationStr = "0:08",
+            vibeEmoji = "🚀",
+            description = "High-octane electronic pulse and punchy digital rhythm for major product launches."
+        ),
+        MusicTrack(
+            id = 5,
+            title = "Morning Espresso Groove",
+            genre = "Nu-Funk Tech Groove",
+            bpm = 98,
+            durationStr = "0:10",
+            vibeEmoji = "☀️",
+            description = "Upbeat funky Rhodes progression and cheerful rhythm for an energetic startup day."
+        )
+    )
+
+    val TRACK_NAMES = MUSIC_TRACKS.map { it.title }
 
     private var musicVolume: Float = 0.65f
     private var sfxVolume: Float = 0.85f
@@ -50,7 +113,7 @@ object SoundManager {
         sfxVolume = settings.sfxVolume
         isMusicEnabled = settings.isMusicEnabled
         isSfxEnabled = settings.isSfxEnabled
-        currentTrackIndex = settings.selectedMusicTrack.coerceIn(0, TRACK_NAMES.size - 1)
+        currentTrackIndex = settings.selectedMusicTrack.coerceIn(0, MUSIC_TRACKS.size - 1)
 
         if (isInitialized) {
             updateSettings(settings)
@@ -81,7 +144,7 @@ object SoundManager {
                 val launchFile = File(audioDir, "sfx_launch.wav")
                 if (!launchFile.exists()) launchFile.writeBytes(generateLaunchWav())
 
-                // 2. Synthesize ambient multi-track BGM WAV files
+                // 2. Synthesize all 6 ambient multi-track BGM WAV files
                 val bgmFile0 = File(audioDir, "bgm_track_0.wav")
                 if (!bgmFile0.exists()) bgmFile0.writeBytes(generateLoFiBgmWav())
 
@@ -90,6 +153,15 @@ object SoundManager {
 
                 val bgmFile2 = File(audioDir, "bgm_track_2.wav")
                 if (!bgmFile2.exists()) bgmFile2.writeBytes(generateAcousticBgmWav())
+
+                val bgmFile3 = File(audioDir, "bgm_track_3.wav")
+                if (!bgmFile3.exists()) bgmFile3.writeBytes(generateMidnightDeepWorkWav())
+
+                val bgmFile4 = File(audioDir, "bgm_track_4.wav")
+                if (!bgmFile4.exists()) bgmFile4.writeBytes(generateCyberHustleWav())
+
+                val bgmFile5 = File(audioDir, "bgm_track_5.wav")
+                if (!bgmFile5.exists()) bgmFile5.writeBytes(generateMorningEspressoWav())
 
                 // 3. Setup SoundPool
                 val attrs = AudioAttributes.Builder()
@@ -113,13 +185,16 @@ object SoundManager {
                 val activeBgmFile = when (currentTrackIndex) {
                     1 -> bgmFile1
                     2 -> bgmFile2
+                    3 -> bgmFile3
+                    4 -> bgmFile4
+                    5 -> bgmFile5
                     else -> bgmFile0
                 }
 
                 loadAndPlayTrackFile(context, activeBgmFile)
 
                 isInitialized = true
-                Log.d(TAG, "SoundManager initialized successfully with synthesized multi-track audio.")
+                Log.d(TAG, "SoundManager initialized successfully with 6 synthesized original tracks.")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize SoundManager", e)
             }
@@ -152,8 +227,8 @@ object SoundManager {
     }
 
     fun switchTrack(trackIndex: Int) {
-        val idx = trackIndex.coerceIn(0, TRACK_NAMES.size - 1)
-        if (currentTrackIndex == idx && mediaPlayer != null) return
+        val idx = trackIndex.coerceIn(0, MUSIC_TRACKS.size - 1)
+        if (currentTrackIndex == idx && mediaPlayer != null && mediaPlayer?.isPlaying == true) return
         currentTrackIndex = idx
         val ctx = appContext ?: return
 
@@ -164,6 +239,9 @@ object SoundManager {
                 val wavBytes = when (idx) {
                     1 -> generateSynthwaveBgmWav()
                     2 -> generateAcousticBgmWav()
+                    3 -> generateMidnightDeepWorkWav()
+                    4 -> generateCyberHustleWav()
+                    5 -> generateMorningEspressoWav()
                     else -> generateLoFiBgmWav()
                 }
                 targetFile.writeBytes(wavBytes)
@@ -171,6 +249,43 @@ object SoundManager {
             loadAndPlayTrackFile(ctx, targetFile)
         }
     }
+
+    fun nextTrack(): Int {
+        val next = (currentTrackIndex + 1) % MUSIC_TRACKS.size
+        switchTrack(next)
+        return next
+    }
+
+    fun previousTrack(): Int {
+        val prev = if (currentTrackIndex - 1 < 0) MUSIC_TRACKS.size - 1 else currentTrackIndex - 1
+        switchTrack(prev)
+        return prev
+    }
+
+    fun togglePlayPause(): Boolean {
+        return try {
+            mediaPlayer?.let { player ->
+                if (player.isPlaying) {
+                    player.pause()
+                    isMusicEnabled = false
+                    false
+                } else {
+                    isMusicEnabled = true
+                    player.setVolume(musicVolume, musicVolume)
+                    player.start()
+                    true
+                }
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun isMusicPlaying(): Boolean = mediaPlayer?.isPlaying == true && isMusicEnabled
+
+    fun getCurrentTrackIndex(): Int = currentTrackIndex
+
+    fun getCurrentTrack(): MusicTrack = MUSIC_TRACKS.getOrElse(currentTrackIndex) { MUSIC_TRACKS[0] }
 
     fun updateSettings(settings: GameSettings) {
         val trackChanged = currentTrackIndex != settings.selectedMusicTrack

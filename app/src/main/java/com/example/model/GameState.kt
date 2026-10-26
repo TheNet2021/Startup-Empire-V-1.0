@@ -219,7 +219,14 @@ data class GameState(
                 assignedDeskId = "desk_0",
                 hairColor = 0xFF2D3748,
                 shirtColor = 0xFF0284C7,
-                skinTone = 0xFFFFDBAC
+                skinTone = 0xFFFFDBAC,
+                hairStyle = HairStyle.SHORT_POMPADOUR,
+                clothingStyle = ClothingStyle.TECH_HOODIE,
+                accessory = EmployeeAccessory.BLACK_ACETATE_GLASSES,
+                facialHair = FacialHairStyle.FIVE_O_CLOCK_SHADOW,
+                gender = EmployeeGender.MALE,
+                trouserColor = 0xFF1E293B,
+                shoeColor = 0xFFFFFFFF
             )
         )
 
@@ -237,7 +244,14 @@ data class GameState(
                 trait = EmployeeTrait.PIXEL_PERFECT,
                 hairColor = 0xFF1E293B,
                 shirtColor = 0xFFEC4899,
-                skinTone = 0xFFE0AC69
+                skinTone = 0xFFE0AC69,
+                hairStyle = HairStyle.SLEEK_BOB,
+                clothingStyle = ClothingStyle.BLAZER_CREW,
+                accessory = EmployeeAccessory.GOLD_WIRE_GLASSES,
+                facialHair = FacialHairStyle.NONE,
+                gender = EmployeeGender.FEMALE,
+                trouserColor = 0xFF0F172A,
+                shoeColor = 0xFFE2E8F0
             ),
             Employee(
                 id = "cand_2",
@@ -252,7 +266,14 @@ data class GameState(
                 trait = EmployeeTrait.RAPID_LEARNER,
                 hairColor = 0xFF78350F,
                 shirtColor = 0xFF10B981,
-                skinTone = 0xFFFCD34D
+                skinTone = 0xFFF1C27D,
+                hairStyle = HairStyle.TEXTURED_CROP,
+                clothingStyle = ClothingStyle.CASUAL_GRAPHIC_TEE,
+                accessory = EmployeeAccessory.STUDIO_HEADPHONES,
+                facialHair = FacialHairStyle.TRIMMED_BEARD,
+                gender = EmployeeGender.MALE,
+                trouserColor = 0xFF334155,
+                shoeColor = 0xFFDC2626
             ),
             Employee(
                 id = "cand_3",
@@ -265,9 +286,16 @@ data class GameState(
                 morale = 90,
                 energy = 90,
                 trait = EmployeeTrait.DEAL_CLOSER,
-                hairColor = 0xFF4B5563,
+                hairColor = 0xFFB45309,
                 shirtColor = 0xFF8B5CF6,
-                skinTone = 0xFFFBBF24
+                skinTone = 0xFF8D5524,
+                hairStyle = HairStyle.PONYTAIL_BUN,
+                clothingStyle = ClothingStyle.COZY_TURTLENECK,
+                accessory = EmployeeAccessory.SMART_WATCH,
+                facialHair = FacialHairStyle.NONE,
+                gender = EmployeeGender.FEMALE,
+                trouserColor = 0xFF78350F,
+                shoeColor = 0xFFD97706
             ),
             Employee(
                 id = "cand_4",
@@ -282,7 +310,14 @@ data class GameState(
                 trait = EmployeeTrait.CAFFEINE_SAVANT,
                 hairColor = 0xFF0F172A,
                 shirtColor = 0xFFF59E0B,
-                skinTone = 0xFFFFDFBA
+                skinTone = 0xFFFFE0BD,
+                hairStyle = HairStyle.BUZZ_FADE,
+                clothingStyle = ClothingStyle.DEV_POLO,
+                accessory = EmployeeAccessory.AIRPOD_PROS,
+                facialHair = FacialHairStyle.CHIN_GOATEE,
+                gender = EmployeeGender.MALE,
+                trouserColor = 0xFF1E3A8A,
+                shoeColor = 0xFFFFFFFF
             )
         )
 

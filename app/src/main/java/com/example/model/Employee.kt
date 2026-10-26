@@ -106,6 +106,55 @@ enum class EmployeeTrait(
     )
 }
 
+enum class HairStyle(val title: String) {
+    SHORT_POMPADOUR("Pompadour"),
+    TEXTURED_CROP("Crop Fade"),
+    SLEEK_BOB("Layered Bob"),
+    CURLY_AFRO("Curly Afro"),
+    PONYTAIL_BUN("High Bun"),
+    SPIKY_MODERN("Textured Spikes"),
+    LONG_WAVY("Flowing Waves"),
+    BUZZ_FADE("Buzz Fade"),
+    SIDE_BRAIDS("Side Braids"),
+    MESSY_SHAG("Messy Shag")
+}
+
+enum class ClothingStyle(val title: String) {
+    TECH_HOODIE("Zip Hoodie"),
+    BLAZER_CREW("Blazer & Tee"),
+    OXFORD_BUTTON_DOWN("Oxford Shirt"),
+    COZY_TURTLENECK("Roll Turtleneck"),
+    CASUAL_GRAPHIC_TEE("Graphic Tee"),
+    FLANNEL_PLAID("Flannel Plaid"),
+    LAYERED_CARDIGAN("Cardigan"),
+    DEV_POLO("Tech Polo")
+}
+
+enum class EmployeeAccessory(val title: String) {
+    NONE("None"),
+    BLACK_ACETATE_GLASSES("Acetate Glasses"),
+    GOLD_WIRE_GLASSES("Wireframe Glasses"),
+    STUDIO_HEADPHONES("Studio Headphones"),
+    AIRPOD_PROS("Wireless Earbuds"),
+    STREETWEAR_CAP("Streetwear Cap"),
+    HIPSTER_BEANIE("Knit Beanie"),
+    SMART_WATCH("Smart Tracker")
+}
+
+enum class FacialHairStyle(val title: String) {
+    NONE("Clean Shaven"),
+    FIVE_O_CLOCK_SHADOW("Designer Stubble"),
+    TRIMMED_BEARD("Trimmed Beard"),
+    CHIN_GOATEE("Sculpted Goatee"),
+    MOUSTACHE("Classic Moustache")
+}
+
+enum class EmployeeGender(val title: String) {
+    MALE("Male"),
+    FEMALE("Female"),
+    NON_BINARY("Non-Binary")
+}
+
 enum class EmployeeState {
     WORKING,
     COFFEE_BREAK,
@@ -132,6 +181,13 @@ data class Employee(
     val hairColor: Long = 0xFF4A3728,
     val shirtColor: Long = 0xFF2563EB,
     val skinTone: Long = 0xFFFFDBAC,
+    val hairStyle: HairStyle = HairStyle.SHORT_POMPADOUR,
+    val clothingStyle: ClothingStyle = ClothingStyle.TECH_HOODIE,
+    val accessory: EmployeeAccessory = EmployeeAccessory.NONE,
+    val facialHair: FacialHairStyle = FacialHairStyle.NONE,
+    val gender: EmployeeGender = EmployeeGender.NON_BINARY,
+    val trouserColor: Long = 0xFF1E293B,
+    val shoeColor: Long = 0xFFE2E8F0,
     val totalWorkOutput: Long = 0
 ) {
     val levelTitle: String get() = when (level) {
@@ -239,4 +295,67 @@ data class Employee(
         val traitBonus = trait.productivityMultiplier
         return (skill / 100f) * (speed / 100f) * moraleFactor * energyFactor * levelFactor * traitBonus
     }
+}
+
+object EmployeeAppearance {
+    val SKIN_TONES = listOf(
+        0xFFFFE0BDL, // Fair porcelain
+        0xFFFFD1AAL, // Warm ivory
+        0xFFFFDBACL, // Peach
+        0xFFF1C27DL, // Golden beige
+        0xFFE0AC69L, // Warm honey
+        0xFFC68642L, // Olive tan
+        0xFF8D5524L, // Caramel bronze
+        0xFF6A3B18L, // Deep espresso
+        0xFF3D2314L  // Dark ebony
+    )
+
+    val HAIR_COLORS = listOf(
+        0xFF0F172AL, // Onyx jet black
+        0xFF2D3748L, // Charcoal black
+        0xFF4A3728L, // Deep espresso brown
+        0xFF78350FL, // Chestnut brown
+        0xFFB45309L, // Amber auburn
+        0xFFDC2626L, // Copper red
+        0xFFF59E0BL, // Honey blonde
+        0xFFFEF08AL, // Platinum blonde
+        0xFF94A3B8L, // Silver grey
+        0xFF06B6D4L, // Neon cyan
+        0xFFA855F7L, // Purple
+        0xFFEC4899L  // Pastel pink
+    )
+
+    val SHIRT_COLORS = listOf(
+        0xFF2563EBL, // Cobalt blue
+        0xFF0284C7L, // Electric cyan
+        0xFF0D9488L, // Deep teal
+        0xFF10B981L, // Emerald green
+        0xFF16A34AL, // Forest green
+        0xFF84CC16L, // Bright lime
+        0xFFEAB308L, // Mustard gold
+        0xFFEA580CL, // Warm rust orange
+        0xFFDC2626L, // Crimson red
+        0xFFDB2777L, // Magenta rose
+        0xFF8B5CF6L, // Purple iris
+        0xFF475569L, // Slate tech grey
+        0xFF0F172AL, // Stealth black
+        0xFFF8FAFCL  // Crisp white
+    )
+
+    val TROUSER_COLORS = listOf(
+        0xFF1E293BL, // Dark indigo denim
+        0xFF0F172AL, // Pitch black chinos
+        0xFF334155L, // Charcoal slacks
+        0xFF78350FL, // Khaki chinos
+        0xFF365314L, // Olive cargos
+        0xFF1E3A8AL  // Classic blue jeans
+    )
+
+    val SHOE_COLORS = listOf(
+        0xFFFFFFFFL, // White sneakers
+        0xFF0F172AL, // Black leather
+        0xFFE2E8F0L, // Slate trainers
+        0xFFDC2626L, // Red accents
+        0xFFD97706L  // Gum sole
+    )
 }

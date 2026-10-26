@@ -1025,10 +1025,21 @@ object SimulationEngine {
             val baseSpeed = 45 + (candidateLevel * 10) + Random.nextInt(-5, 8)
             val salary = role.baseSalary * (1.0 + (candidateLevel - 1) * 0.35)
 
-            val hairColors = listOf(0xFF1E293B, 0xFF4A3728, 0xFF78350F, 0xFF0F172A)
-            val shirtColors = listOf(0xFF2563EB, 0xFF10B981, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B)
-            val skinTones = listOf(0xFFFFDBAC, 0xFFE0AC69, 0xFFFCD34D, 0xFF8D5524)
+            val hairColors = EmployeeAppearance.HAIR_COLORS
+            val shirtColors = EmployeeAppearance.SHIRT_COLORS
+            val skinTones = EmployeeAppearance.SKIN_TONES
+            val trouserColors = EmployeeAppearance.TROUSER_COLORS
+            val shoeColors = EmployeeAppearance.SHOE_COLORS
             val trait = EmployeeTrait.entries.toTypedArray().random()
+            val gender = listOf(EmployeeGender.MALE, EmployeeGender.FEMALE, EmployeeGender.NON_BINARY).random()
+            val hairStyle = HairStyle.entries.toTypedArray().random()
+            val clothingStyle = ClothingStyle.entries.toTypedArray().random()
+            val accessory = if (Random.nextFloat() > 0.35f) EmployeeAccessory.entries.toTypedArray().random() else EmployeeAccessory.NONE
+            val facialHair = if (gender == EmployeeGender.MALE && Random.nextFloat() > 0.45f) {
+                FacialHairStyle.entries.toTypedArray().random()
+            } else {
+                FacialHairStyle.NONE
+            }
 
             candidateList.add(
                 Employee(
@@ -1044,7 +1055,14 @@ object SimulationEngine {
                     trait = trait,
                     hairColor = hairColors.random(),
                     shirtColor = shirtColors.random(),
-                    skinTone = skinTones.random()
+                    skinTone = skinTones.random(),
+                    hairStyle = hairStyle,
+                    clothingStyle = clothingStyle,
+                    accessory = accessory,
+                    facialHair = facialHair,
+                    gender = gender,
+                    trouserColor = trouserColors.random(),
+                    shoeColor = shoeColors.random()
                 )
             )
         }
