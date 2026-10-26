@@ -344,13 +344,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // Clamp furniture coordinates within new grid boundaries
-        val adjustedFurniture = state.furniture.map { furn ->
-            furn.copy(
-                gridX = furn.gridX.coerceIn(0, tier.gridWidth - 1),
-                gridY = furn.gridY.coerceIn(0, tier.gridHeight - 1)
-            )
-        }
+        // Migrate furniture cleanly into the new tier's spacious layout
+        val adjustedFurniture = OfficeLayoutManager.migrateFurnitureForTier(state.furniture, tier)
 
         _gameState.value = state.copy(
             cash = state.cash - tier.upgradeCost,
@@ -366,37 +361,35 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun buyFurniture(type: FurnitureType) {
         val state = _gameState.value
         if (type.isWorkstation && state.totalWorkstations >= state.officeTier.maxDesks) {
-            showToast("Workstation limit reached for current office (${state.officeTier.maxDesks} max)! Upgrade office first.")
+            showToast("Workstation limit reached for current office (${state.officeTier.maxDesks} max)! Relocate to expand your team.")
+            com.example.audio.SoundManager.playError()
             return
         }
 
         if (state.cash < type.cost) {
             showToast("Insufficient funds! Need $%,.0f for ${type.title}.".format(type.cost))
+            com.example.audio.SoundManager.playError()
             return
         }
 
-        // Place on next open grid tile
-        val gridW = state.officeTier.gridWidth
-        val gridH = state.officeTier.gridHeight
-        val occupiedTiles = state.furniture.map { it.gridX to it.gridY }.toSet()
-
-        var chosenTile: Pair<Int, Int>? = null
-        for (gx in 1 until gridW - 1) {
-            for (gy in 1 until gridH - 1) {
-                if (!occupiedTiles.contains(gx to gy)) {
-                    chosenTile = gx to gy
-                    break
-                }
-            }
-            if (chosenTile != null) break
+        // Find next open, architecturally planned slot with guaranteed clearance
+        val chosenCoord = if (type.isWorkstation) {
+            OfficeLayoutManager.findNextFreeWorkstationSlot(state.officeTier, state.furniture)
+        } else {
+            OfficeLayoutManager.findNextFreeAmenitySlot(type, state.officeTier, state.furniture)
         }
 
-        val (tx, ty) = chosenTile ?: (1 to 1)
+        if (chosenCoord == null) {
+            showToast("No available space for ${type.title}! Relocate to a larger office.")
+            com.example.audio.SoundManager.playError()
+            return
+        }
+
         val newFurniture = PlacedFurniture(
             id = "furn_${System.currentTimeMillis()}",
             type = type,
-            gridX = tx,
-            gridY = ty,
+            gridX = chosenCoord.x,
+            gridY = chosenCoord.y,
             rotation = 0
         )
 
@@ -409,27 +402,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cash = state.cash - type.cost,
             furniture = state.furniture + newFurniture,
             server = updatedServer,
-            notifications = listOf("Installed ${type.title} in the office.") + state.notifications
+            notifications = listOf("Installed ${type.title} at (${chosenCoord.x}, ${chosenCoord.y}).") + state.notifications
         )
         showToast("Installed ${type.title} (-$%,.0f)".format(type.cost))
+        com.example.audio.SoundManager.playLaunch()
         saveGameInternal()
     }
 
     fun buyFurnitureAt(type: FurnitureType, x: Int, y: Int) {
         val state = _gameState.value
-        if (type.isWorkstation && state.totalWorkstations >= state.officeTier.maxDesks) {
-            showToast("Workstation limit reached for current office (${state.officeTier.maxDesks} max)! Upgrade office first.")
+        val validation = OfficeLayoutManager.validatePlacement(type, x, y, null, state.furniture, state.officeTier)
+        if (validation is OfficeLayoutManager.PlacementValidation.Invalid) {
+            showToast(validation.reason)
+            com.example.audio.SoundManager.playError()
             return
         }
 
         if (state.cash < type.cost) {
             showToast("Insufficient funds! Need $%,.0f for ${type.title}.".format(type.cost))
-            return
-        }
-
-        val occupiedTiles = state.furniture.map { it.gridX to it.gridY }.toSet()
-        if (occupiedTiles.contains(x to y)) {
-            showToast("Tile ($x, $y) is already occupied!")
+            com.example.audio.SoundManager.playError()
             return
         }
 
@@ -452,6 +443,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             notifications = listOf("Placed ${type.title} at ($x, $y).") + state.notifications
         )
         showToast("Placed ${type.title} at ($x, $y) (-$%,.0f)".format(type.cost))
+        com.example.audio.SoundManager.playLaunch()
         saveGameInternal()
     }
 
@@ -459,16 +451,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val state = _gameState.value
         val furn = state.furniture.find { it.id == furnitureId } ?: return
 
-        val gridW = state.officeTier.gridWidth
-        val gridH = state.officeTier.gridHeight
-        if (newX !in 0 until gridW || newY !in 0 until gridH) {
-            showToast("Cannot move outside office walls!")
-            return
-        }
-
-        val otherTiles = state.furniture.filter { it.id != furnitureId }.map { it.gridX to it.gridY }.toSet()
-        if (otherTiles.contains(newX to newY)) {
-            showToast("Tile ($newX, $newY) is already occupied!")
+        val validation = OfficeLayoutManager.validatePlacement(furn.type, newX, newY, furnitureId, state.furniture, state.officeTier)
+        if (validation is OfficeLayoutManager.PlacementValidation.Invalid) {
+            showToast(validation.reason)
+            com.example.audio.SoundManager.playError()
             return
         }
 
@@ -478,6 +464,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         _gameState.value = state.copy(furniture = updatedFurniture)
         showToast("Moved ${furn.type.title} to ($newX, $newY).")
+        com.example.audio.SoundManager.playClick()
         saveGameInternal()
     }
 

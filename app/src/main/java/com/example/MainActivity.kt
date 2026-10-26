@@ -142,6 +142,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartupEmpireGameScreen(
     state: GameState,
@@ -154,6 +155,8 @@ fun StartupEmpireGameScreen(
     var inspectedFurniture by remember { mutableStateOf<PlacedFurniture?>(null) }
     var showNotificationsDialog by remember { mutableStateOf(false) }
     var isOfficeViewExpanded by remember { mutableStateOf(false) }
+    var showOfficeShopSheet by remember { mutableStateOf(false) }
+    var initialOfficeSubtab by remember { mutableIntStateOf(0) }
 
     // Auto-clear toast after 2.5 seconds
     LaunchedEffect(toastMessage) {
@@ -280,20 +283,15 @@ fun StartupEmpireGameScreen(
                 }
             }
 
-            // 2. Central 3D/Isometric Office Scene & Management Pane
+            // 2. Central 3D/Isometric Office Scene & Management Section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Elevated Isometric Office Canvas (takes upper portion or full screen when expanded)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(if (isOfficeViewExpanded || selectedTab == GameTab.OFFICE) 1.25f else 0.85f)
-                            .testTag("office_3d_viewport")
-                    ) {
+                if (selectedTab == GameTab.OFFICE) {
+                    // Full-screen interactive playable 3D office
+                    Box(modifier = Modifier.fillMaxSize().testTag("office_3d_viewport")) {
                         OfficeIsometricCanvas(
                             state = state,
                             onSelectFurniture = { furn ->
@@ -321,48 +319,134 @@ fun StartupEmpireGameScreen(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Floating Expand/Collapse Viewport Button
-                        FilledTonalIconButton(
-                            onClick = {
-                                SoundManager.playClick()
-                                isOfficeViewExpanded = !isOfficeViewExpanded
-                            },
+                        // Floating Management Actions over the full playable office
+                        Row(
                             modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(10.dp)
-                                .size(36.dp)
-                                .testTag("btn_expand_office_view"),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = Color(0xFF1E293B).copy(alpha = 0.85f)
-                            )
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 12.dp)
+                                .testTag("floating_office_actions"),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isOfficeViewExpanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                                contentDescription = "Toggle Fullscreen Office View",
-                                tint = Color(0xFF00E5FF),
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Button(
+                                onClick = {
+                                    SoundManager.playClick()
+                                    initialOfficeSubtab = 0
+                                    showOfficeShopSheet = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                shape = RoundedCornerShape(24.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                border = BorderStroke(1.dp, Color(0xFF34D399)),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Store & Gear", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    SoundManager.playClick()
+                                    initialOfficeSubtab = 2
+                                    showOfficeShopSheet = true
+                                },
+                                colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF1E293B).copy(alpha = 0.95f)),
+                                shape = RoundedCornerShape(24.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                border = BorderStroke(1.dp, Color(0xFF00E5FF)),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Apartment, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF00E5FF))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Relocate HQ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E5FF))
+                            }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    SoundManager.playClick()
+                                    initialOfficeSubtab = 1
+                                    showOfficeShopSheet = true
+                                },
+                                colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF1E293B).copy(alpha = 0.95f)),
+                                shape = RoundedCornerShape(24.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                border = BorderStroke(1.dp, Color(0xFF64748B)),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFFCBD5E1))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Items (${state.furniture.size})", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFCBD5E1))
+                            }
                         }
                     }
+                } else {
+                    // When on Staff, Products, Servers, Finance: Show split or full management screen
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Upper mini office viewport if not full expanded
+                        if (!isOfficeViewExpanded) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(0.75f)
+                                    .testTag("office_3d_viewport")
+                            ) {
+                                OfficeIsometricCanvas(
+                                    state = state,
+                                    onSelectFurniture = { furn ->
+                                        SoundManager.playClick()
+                                        inspectedFurniture = furn
+                                    },
+                                    onSelectEmployee = { emp ->
+                                        SoundManager.playClick()
+                                        inspectedEmployee = emp
+                                    },
+                                    onOpenServerDetails = {
+                                        SoundManager.playClick()
+                                        selectedTab = GameTab.SERVERS
+                                    },
+                                    onMoveFurniture = { fId, nx, ny ->
+                                        viewModel.moveFurniture(fId, nx, ny)
+                                    },
+                                    onRotateFurniture = { fId ->
+                                        SoundManager.playClick()
+                                        viewModel.rotateFurniture(fId)
+                                    },
+                                    onSellFurniture = { fId ->
+                                        viewModel.sellFurniture(fId)
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
 
-                    // Lower Management Tabs Section (Collapsible when expanded)
-                    if (!isOfficeViewExpanded) {
+                                FilledTonalIconButton(
+                                    onClick = {
+                                        SoundManager.playClick()
+                                        isOfficeViewExpanded = true
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(8.dp)
+                                        .size(32.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = Color(0xFF1E293B).copy(alpha = 0.85f)
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Fullscreen, contentDescription = "Expand Office", tint = Color(0xFF00E5FF), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+
+                        // Lower management screen
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1.0f)
+                                .weight(if (isOfficeViewExpanded) 0.001f else 1.25f)
                                 .testTag("management_tabs_card"),
                             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF090D16)),
                             border = BorderStroke(1.dp, Color(0xFF1E293B))
                         ) {
                             when (selectedTab) {
-                                GameTab.OFFICE -> OfficeTab(
-                                    state = state,
-                                    onUpgradeOffice = { tier -> viewModel.upgradeOffice(tier) },
-                                    onBuyFurniture = { type -> viewModel.buyFurniture(type) },
-                                    onSellFurniture = { fId -> viewModel.sellFurniture(fId) }
-                                )
+                                GameTab.OFFICE -> { /* Handled in full view above */ }
                                 GameTab.EMPLOYEES -> EmployeesTab(
                                     state = state,
                                     onHireCandidate = { cand -> viewModel.hireCandidate(cand) },
@@ -536,5 +620,27 @@ fun StartupEmpireGameScreen(
             onRestructureBailout = { viewModel.restructureBailout() },
             onRestartNewGame = { viewModel.resetGame() }
         )
+    }
+
+    // 6. Office Store & Relocation Modal Bottom Sheet
+    if (showOfficeShopSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showOfficeShopSheet = false },
+            containerColor = Color(0xFF090D16),
+            tonalElevation = 12.dp,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color(0xFF64748B)) }
+        ) {
+            OfficeTab(
+                state = state,
+                onUpgradeOffice = { tier ->
+                    viewModel.upgradeOffice(tier)
+                    showOfficeShopSheet = false
+                },
+                onBuyFurniture = { type -> viewModel.buyFurniture(type) },
+                onSellFurniture = { fId -> viewModel.sellFurniture(fId) },
+                initialSubtab = initialOfficeSubtab,
+                modifier = Modifier.fillMaxHeight(0.85f)
+            )
+        }
     }
 }

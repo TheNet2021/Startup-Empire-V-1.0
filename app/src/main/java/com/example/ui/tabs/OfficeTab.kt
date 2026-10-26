@@ -35,9 +35,10 @@ fun OfficeTab(
     onUpgradeOffice: (OfficeTier) -> Unit,
     onBuyFurniture: (FurnitureType) -> Unit,
     onSellFurniture: (String) -> Unit,
+    initialSubtab: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    var selectedOfficeSubtab by remember { mutableIntStateOf(0) } // 0: Shop Catalog, 1: Placed Items, 2: Relocate
+    var selectedOfficeSubtab by remember(initialSubtab) { mutableIntStateOf(initialSubtab) } // 0: Shop Catalog, 1: Placed Items, 2: Relocate
     var selectedCategory by remember { mutableStateOf<FurnitureCategory?>(null) }
     var itemToSell by remember { mutableStateOf<PlacedFurniture?>(null) }
 
@@ -257,32 +258,22 @@ fun OfficeTab(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // High-contrast visual preview badge
+                                // High-resolution 3D asset preview card
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = when (furn.category) {
-                                        FurnitureCategory.WORKSTATION -> Color(0xFF1E3A8A)
-                                        FurnitureCategory.INFRASTRUCTURE -> Color(0xFF064E3B)
-                                        FurnitureCategory.AMENITY -> Color(0xFF701A75)
-                                        FurnitureCategory.DECORATION -> Color(0xFF78350F)
-                                    },
-                                    border = BorderStroke(
-                                        1.dp,
-                                        when (furn.category) {
-                                            FurnitureCategory.WORKSTATION -> Color(0xFF38BDF8)
-                                            FurnitureCategory.INFRASTRUCTURE -> Color(0xFF34D399)
-                                            FurnitureCategory.AMENITY -> Color(0xFFF472B6)
-                                            FurnitureCategory.DECORATION -> Color(0xFFFBBF24)
-                                        }
-                                    ),
-                                    modifier = Modifier.size(54.dp)
+                                    color = Color(0xFF0F172A),
+                                    border = BorderStroke(1.dp, Color(0xFF334155)),
+                                    modifier = Modifier.size(64.dp)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = getFurnitureIcon(furn),
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(4.dp)
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = getFurnitureDrawable(furn)),
                                             contentDescription = furn.title,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(28.dp)
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier.fillMaxSize()
                                         )
                                     }
                                 }
@@ -425,9 +416,25 @@ fun OfficeTab(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF0F172A),
+                                    border = BorderStroke(1.dp, Color(0xFF334155)),
+                                    modifier = Modifier.size(52.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(3.dp)) {
+                                        Image(
+                                            painter = painterResource(id = getFurnitureDrawable(item.type)),
+                                            contentDescription = item.type.title,
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = item.type.title,
@@ -706,6 +713,22 @@ private fun getFurnitureIcon(furn: FurnitureType): ImageVector = when (furn) {
     FurnitureType.ARCADE_CABINET -> Icons.Default.SportsEsports
     FurnitureType.RECEPTION_DESK -> Icons.Default.MeetingRoom
     FurnitureType.MEETING_TABLE -> Icons.Default.Groups
+}
+
+private fun getFurnitureDrawable(furn: FurnitureType): Int = when (furn) {
+    FurnitureType.DESK_STANDARD,
+    FurnitureType.DESK_DUAL_SCREEN,
+    FurnitureType.DESK_EXECUTIVE -> R.drawable.iso_desk_empty
+    FurnitureType.SERVER_RACK_BLADE,
+    FurnitureType.SERVER_RACK_ENTERPRISE -> R.drawable.iso_server_rack
+    FurnitureType.BONSAI_PLANT -> R.drawable.iso_plant
+    FurnitureType.WATER_COOLER -> R.drawable.iso_water_cooler
+    FurnitureType.ARCADE_CABINET -> R.drawable.iso_arcade
+    FurnitureType.WHITEBOARD -> R.drawable.iso_whiteboard
+    FurnitureType.ESPRESSO_MACHINE -> R.drawable.iso_espresso
+    FurnitureType.MEETING_TABLE,
+    FurnitureType.RECEPTION_DESK -> R.drawable.iso_meeting_table
+    FurnitureType.BOOKSHELF -> R.drawable.iso_bookshelf
 }
 
 private fun getTierPreviewDrawable(tier: OfficeTier): Int? = when (tier) {

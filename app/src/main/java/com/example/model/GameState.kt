@@ -169,36 +169,36 @@ data class GameState(
                 id = "desk_0",
                 type = FurnitureType.DESK_STANDARD,
                 gridX = 1,
-                gridY = 2,
+                gridY = 3,
                 rotation = 0,
                 assignedEmployeeId = "emp_founder"
             ),
             PlacedFurniture(
                 id = "desk_1",
                 type = FurnitureType.DESK_DUAL_SCREEN,
-                gridX = 1,
-                gridY = 4,
+                gridX = 3,
+                gridY = 1,
                 rotation = 0
             ),
             PlacedFurniture(
                 id = "server_0",
                 type = FurnitureType.SERVER_RACK_BLADE,
-                gridX = 4,
+                gridX = 5,
                 gridY = 1,
-                rotation = 90
+                rotation = 0
             ),
             PlacedFurniture(
                 id = "plant_0",
                 type = FurnitureType.BONSAI_PLANT,
                 gridX = 4,
-                gridY = 4,
+                gridY = 2,
                 rotation = 0
             ),
             PlacedFurniture(
                 id = "water_0",
                 type = FurnitureType.WATER_COOLER,
                 gridX = 1,
-                gridY = 1,
+                gridY = 5,
                 rotation = 0
             )
         )
