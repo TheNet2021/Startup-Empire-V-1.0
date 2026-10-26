@@ -1,5 +1,6 @@
 package com.example.ui.office3d
 
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -7,6 +8,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -368,6 +370,136 @@ object IsometricFurnitureRenderer {
                 }
                 else -> {}
             }
+
+            // -------------------------------------------------------------
+            // FLOATING STATUS & THOUGHT BUBBLE ABOVE SEATED EMPLOYEE
+            // -------------------------------------------------------------
+            val bubbleBob = (sin(animTime * 3.2f + ((assignedEmp.id.hashCode() and 0x7FFFFFFF) % 10)) * 2.2f * scale).toFloat()
+            val bubbleY = dstTop - 4f * scale + bubbleBob
+            val bubbleX = centerX + 10f * scale
+
+            val bubbleW = 26f * scale
+            val bubbleH = 16f * scale
+
+            // Drop shadow beneath speech bubble
+            drawRoundRect(
+                color = Color.Black.copy(alpha = 0.4f),
+                topLeft = Offset(bubbleX - bubbleW / 2f + 1f * scale, bubbleY - bubbleH / 2f + 1.5f * scale),
+                size = Size(bubbleW, bubbleH),
+                cornerRadius = CornerRadius(5f * scale, 5f * scale)
+            )
+
+            // Speech bubble body
+            drawRoundRect(
+                color = Color(0xFF0F172A),
+                topLeft = Offset(bubbleX - bubbleW / 2f, bubbleY - bubbleH / 2f),
+                size = Size(bubbleW, bubbleH),
+                cornerRadius = CornerRadius(5f * scale, 5f * scale)
+            )
+            drawRoundRect(
+                color = baseRoleColor.copy(alpha = 0.85f),
+                topLeft = Offset(bubbleX - bubbleW / 2f, bubbleY - bubbleH / 2f),
+                size = Size(bubbleW, bubbleH),
+                cornerRadius = CornerRadius(5f * scale, 5f * scale),
+                style = Stroke(width = 1.2f * scale)
+            )
+
+            // Little triangular pointer towards the employee
+            val pointer = Path().apply {
+                moveTo(bubbleX - 3f * scale, bubbleY + bubbleH / 2f)
+                lineTo(bubbleX - 6f * scale, bubbleY + bubbleH / 2f + 3.5f * scale)
+                lineTo(bubbleX, bubbleY + bubbleH / 2f)
+                close()
+            }
+            drawPath(pointer, Color(0xFF0F172A))
+            drawPath(pointer, baseRoleColor.copy(alpha = 0.85f), style = Stroke(width = 1.1f * scale))
+
+            // Speech bubble internal icon/symbols
+            when (assignedEmp.state) {
+                EmployeeState.WORKING -> {
+                    when (assignedEmp.role) {
+                        EmployeeRole.DEVELOPER -> {
+                            // Code brackets "< >"
+                            drawLine(Color(0xFF00E5FF), start = Offset(bubbleX - 6f * scale, bubbleY - 3f * scale), end = Offset(bubbleX - 9f * scale, bubbleY), strokeWidth = 1.2f * scale)
+                            drawLine(Color(0xFF00E5FF), start = Offset(bubbleX - 9f * scale, bubbleY), end = Offset(bubbleX - 6f * scale, bubbleY + 3f * scale), strokeWidth = 1.2f * scale)
+                            drawLine(Color(0xFF00E5FF), start = Offset(bubbleX + 6f * scale, bubbleY - 3f * scale), end = Offset(bubbleX + 9f * scale, bubbleY), strokeWidth = 1.2f * scale)
+                            drawLine(Color(0xFF00E5FF), start = Offset(bubbleX + 9f * scale, bubbleY), end = Offset(bubbleX + 6f * scale, bubbleY + 3f * scale), strokeWidth = 1.2f * scale)
+                            // Forward slash "/"
+                            drawLine(Color.White, start = Offset(bubbleX + 2f * scale, bubbleY - 4f * scale), end = Offset(bubbleX - 2f * scale, bubbleY + 4f * scale), strokeWidth = 1.2f * scale)
+                        }
+                        EmployeeRole.DESIGNER -> {
+                            // Sparkling diamond palette symbol
+                            val dia = Path().apply {
+                                moveTo(bubbleX, bubbleY - 4f * scale)
+                                lineTo(bubbleX + 4f * scale, bubbleY)
+                                lineTo(bubbleX, bubbleY + 4f * scale)
+                                lineTo(bubbleX - 4f * scale, bubbleY)
+                                close()
+                            }
+                            drawPath(dia, Color(0xFFEC4899))
+                            drawCircle(Color.White, radius = 1.2f * scale, center = Offset(bubbleX, bubbleY))
+                        }
+                        EmployeeRole.QA_TESTER -> {
+                            // Bug shield cross symbol
+                            drawCircle(Color(0xFF10B981), radius = 3f * scale, center = Offset(bubbleX, bubbleY))
+                            drawLine(Color.White, start = Offset(bubbleX - 2f * scale, bubbleY), end = Offset(bubbleX + 2f * scale, bubbleY), strokeWidth = 1f * scale)
+                            drawLine(Color.White, start = Offset(bubbleX, bubbleY - 2f * scale), end = Offset(bubbleX, bubbleY + 2f * scale), strokeWidth = 1f * scale)
+                        }
+                        EmployeeRole.MARKETER, EmployeeRole.SALES -> {
+                            // Upward green growth trendline with arrow
+                            drawLine(Color(0xFF10B981), start = Offset(bubbleX - 6f * scale, bubbleY + 3f * scale), end = Offset(bubbleX - 1f * scale, bubbleY), strokeWidth = 1.4f * scale)
+                            drawLine(Color(0xFF10B981), start = Offset(bubbleX - 1f * scale, bubbleY), end = Offset(bubbleX + 5f * scale, bubbleY - 3f * scale), strokeWidth = 1.4f * scale)
+                            drawCircle(Color(0xFF34D399), radius = 1.5f * scale, center = Offset(bubbleX + 5f * scale, bubbleY - 3f * scale))
+                        }
+                        EmployeeRole.SYSADMIN -> {
+                            // Server / cloud dual nodes
+                            drawCircle(Color(0xFF38BDF8), radius = 2f * scale, center = Offset(bubbleX - 3.5f * scale, bubbleY))
+                            drawCircle(Color(0xFF38BDF8), radius = 2f * scale, center = Offset(bubbleX + 3.5f * scale, bubbleY))
+                            drawLine(Color.White, start = Offset(bubbleX - 1.5f * scale, bubbleY), end = Offset(bubbleX + 1.5f * scale, bubbleY), strokeWidth = 1.2f * scale)
+                        }
+                        EmployeeRole.PROJECT_MANAGER -> {
+                            // Checklist tick mark
+                            drawLine(Color(0xFFA855F7), start = Offset(bubbleX - 4f * scale, bubbleY), end = Offset(bubbleX - 1f * scale, bubbleY + 3f * scale), strokeWidth = 1.4f * scale)
+                            drawLine(Color(0xFFA855F7), start = Offset(bubbleX - 1f * scale, bubbleY + 3f * scale), end = Offset(bubbleX + 5f * scale, bubbleY - 3f * scale), strokeWidth = 1.4f * scale)
+                        }
+                    }
+                }
+                EmployeeState.COFFEE_BREAK -> {
+                    // Steaming mug icon
+                    drawRoundRect(Color(0xFF78350F), topLeft = Offset(bubbleX - 3f * scale, bubbleY - 2f * scale), size = Size(6f * scale, 5f * scale), cornerRadius = CornerRadius(1.2f * scale, 1.2f * scale))
+                    drawLine(Color(0xFFFDE047), start = Offset(bubbleX, bubbleY - 3f * scale), end = Offset(bubbleX, bubbleY - 5f * scale), strokeWidth = 1f * scale)
+                }
+                EmployeeState.BRAINSTORMING -> {
+                    // Idea lightbulb spark
+                    drawCircle(Color(0xFFFBBF24), radius = 2.8f * scale, center = Offset(bubbleX, bubbleY))
+                    drawCircle(Color.White, radius = 1.2f * scale, center = Offset(bubbleX, bubbleY))
+                }
+                EmployeeState.RESTING -> {
+                    // Restful sleeping dots
+                    drawCircle(Color(0xFF38BDF8), radius = 1.4f * scale, center = Offset(bubbleX - 3f * scale, bubbleY + 1f * scale))
+                    drawCircle(Color(0xFF38BDF8), radius = 1.8f * scale, center = Offset(bubbleX + 2f * scale, bubbleY - 1f * scale))
+                }
+                EmployeeState.EXHAUSTED -> {
+                    // Warning exclamation mark
+                    drawLine(Color(0xFFEF4444), start = Offset(bubbleX, bubbleY - 3.5f * scale), end = Offset(bubbleX, bubbleY + 0.5f * scale), strokeWidth = 1.6f * scale)
+                    drawCircle(Color(0xFFEF4444), radius = 1f * scale, center = Offset(bubbleX, bubbleY + 3f * scale))
+                }
+            }
+
+            // Seniority Aura Ring around desk base
+            val seniorityColor = when (assignedEmp.level) {
+                1 -> Color(0xFF38BDF8).copy(alpha = 0.35f)
+                2 -> Color(0xFF10B981).copy(alpha = 0.45f)
+                3 -> Color(0xFFF59E0B).copy(alpha = 0.55f)
+                4 -> Color(0xFFA855F7).copy(alpha = 0.65f)
+                else -> Color(0xFF00E5FF).copy(alpha = 0.75f)
+            }
+            drawOval(
+                color = seniorityColor,
+                topLeft = Offset(centerX - 18f * scale, centerY - 28f * scale),
+                size = Size(36f * scale, 14f * scale),
+                style = Stroke(width = 1.6f * scale)
+            )
         }
     }
 

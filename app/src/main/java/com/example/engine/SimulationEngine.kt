@@ -384,26 +384,29 @@ object SimulationEngine {
         hasArcade: Boolean
     ): Employee {
         if (!isWorkHour) {
-            val newEnergy = (emp.energy + 8).coerceAtMost(100)
-            val newMorale = (emp.morale + (if (hasArcade) 4 else 2)).coerceAtMost(100)
+            val traitEnergyBoost = if (emp.trait == EmployeeTrait.NIGHT_OWL) 12 else 8
+            val newEnergy = (emp.energy + traitEnergyBoost).coerceAtMost(100)
+            val newMorale = (emp.morale + (if (hasArcade) 5 else 2)).coerceAtMost(100)
+            val restingState = if (emp.trait == EmployeeTrait.NIGHT_OWL && emp.energy > 40 && (emp.assignedProductId != null || emp.assignedContractId != null)) EmployeeState.WORKING else EmployeeState.RESTING
             return emp.copy(
                 energy = newEnergy,
                 morale = newMorale,
-                state = EmployeeState.RESTING
+                state = restingState
             )
         }
 
         // Work hours (9 AM to 7 PM)
         if (emp.energy < 15) {
-            val recoverBoost = if (hasEspresso) 18 else 12
+            val recoverBoost = if (hasEspresso || emp.trait == EmployeeTrait.CAFFEINE_SAVANT) 24 else 14
             return emp.copy(
                 energy = (emp.energy + recoverBoost).coerceAtMost(100),
-                morale = (emp.morale + 3).coerceAtMost(100),
+                morale = (emp.morale + 4).coerceAtMost(100),
                 state = EmployeeState.COFFEE_BREAK
             )
         }
 
-        val energyCost = if (hasEspresso) 2 else 4
+        var energyCost = if (hasEspresso) 2 else 4
+        if (emp.trait == EmployeeTrait.CAFFEINE_SAVANT) energyCost = (energyCost - 1).coerceAtLeast(1)
         val newEnergy = (emp.energy - energyCost).coerceAtLeast(5)
         val isAssigned = emp.assignedProductId != null || emp.assignedContractId != null
         val stateEnum = if (isAssigned) EmployeeState.WORKING else EmployeeState.BRAINSTORMING
@@ -1025,6 +1028,7 @@ object SimulationEngine {
             val hairColors = listOf(0xFF1E293B, 0xFF4A3728, 0xFF78350F, 0xFF0F172A)
             val shirtColors = listOf(0xFF2563EB, 0xFF10B981, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B)
             val skinTones = listOf(0xFFFFDBAC, 0xFFE0AC69, 0xFFFCD34D, 0xFF8D5524)
+            val trait = EmployeeTrait.entries.toTypedArray().random()
 
             candidateList.add(
                 Employee(
@@ -1037,6 +1041,7 @@ object SimulationEngine {
                     dailySalary = salary,
                     morale = 85 + Random.nextInt(-5, 10),
                     energy = 90 + Random.nextInt(-5, 10),
+                    trait = trait,
                     hairColor = hairColors.random(),
                     shirtColor = shirtColors.random(),
                     skinTone = skinTones.random()

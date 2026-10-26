@@ -457,7 +457,10 @@ fun StartupEmpireGameScreen(
                                     onSendOnRetreat = { emp -> viewModel.sendOnRetreat(emp) },
                                     onAssignProduct = { emp, pId -> viewModel.assignProduct(emp, pId) },
                                     onAssignContract = { emp, cId -> viewModel.assignStaffToContract(emp.id, cId) },
-                                    onSelectEmployee = { emp -> inspectedEmployee = emp }
+                                    onSelectEmployee = { emp -> inspectedEmployee = emp },
+                                    onPizzaParty = { viewModel.orderPizzaParty() },
+                                    onBonus = { emp -> viewModel.giveEmployeeBonus(emp) },
+                                    onCoffeeBreak = { emp -> viewModel.giveCoffeeBreak(emp) }
                                 )
                                 GameTab.PRODUCTS -> ProductsTab(
                                     state = state,
@@ -538,6 +541,14 @@ fun StartupEmpireGameScreen(
             },
             onPromote = {
                 viewModel.promoteEmployee(it)
+                inspectedEmployee = viewModel.gameState.value.employees.find { e -> e.id == it.id }
+            },
+            onBonus = {
+                viewModel.giveEmployeeBonus(it)
+                inspectedEmployee = viewModel.gameState.value.employees.find { e -> e.id == it.id }
+            },
+            onCoffeeBreak = {
+                viewModel.giveCoffeeBreak(it)
                 inspectedEmployee = viewModel.gameState.value.employees.find { e -> e.id == it.id }
             },
             onFire = {

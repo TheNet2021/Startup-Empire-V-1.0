@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,9 +37,13 @@ fun EmployeesTab(
     onAssignProduct: (Employee, String?) -> Unit,
     onAssignContract: (Employee, String?) -> Unit = { _, _ -> },
     onSelectEmployee: (Employee) -> Unit = {},
+    onPizzaParty: () -> Unit = {},
+    onBonus: (Employee) -> Unit = {},
+    onCoffeeBreak: (Employee) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedSubtab by remember { mutableIntStateOf(0) } // 0: Team Roster, 1: Recruitment
+    var selectedRoleFilter by remember { mutableStateOf<EmployeeRole?>(null) }
     var employeeToAssign by remember { mutableStateOf<Employee?>(null) }
     var employeeToFire by remember { mutableStateOf<Employee?>(null) }
 
@@ -68,6 +74,12 @@ fun EmployeesTab(
         }
 
         if (selectedSubtab == 0) {
+            val displayedEmployees = if (selectedRoleFilter == null) {
+                state.employees
+            } else {
+                state.employees.filter { it.role == selectedRoleFilter }
+            }
+
             // Team Roster View
             LazyColumn(
                 modifier = Modifier
@@ -83,31 +95,91 @@ fun EmployeesTab(
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF131B2E)),
                         border = BorderStroke(1.dp, Color(0xFF1E293B)),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total Staff", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("${state.employees.size} / ${state.totalWorkstations}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceAround
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Total Staff", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("${state.employees.size} / ${state.totalWorkstations}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Daily Payroll", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("$%,.0f/day".format(totalPayroll), color = Color(0xFFF87171), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Avg Morale", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("$avgMorale%", color = if (avgMorale >= 75) Color(0xFF34D399) else Color(0xFFFBBF24), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Daily Payroll", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("$%,.0f/day".format(totalPayroll), color = Color(0xFFF87171), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Avg Morale", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                Text("$avgMorale%", color = if (avgMorale >= 75) Color(0xFF34D399) else Color(0xFFFBBF24), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Pizza Party Boost Action
+                            Button(
+                                onClick = onPizzaParty,
+                                enabled = state.cash >= 350.0,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEA580C),
+                                    disabledContainerColor = Color(0xFF1E293B)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("pizza_party_button")
+                            ) {
+                                Text("🍕 Order Team Pizza Party ($350)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("• +30% Morale, +25% Energy", fontSize = 10.sp, color = Color(0xFFFFEDD5))
                             }
                         }
                     }
                 }
 
-                items(state.employees, key = { it.id }) { emp ->
+                // Role Filter Chips Row
+                item {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        item {
+                            FilterChip(
+                                selected = selectedRoleFilter == null,
+                                onClick = { selectedRoleFilter = null },
+                                label = { Text("All (${state.employees.size})", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF00E5FF),
+                                    selectedLabelColor = Color(0xFF090D16),
+                                    containerColor = Color(0xFF131B2E),
+                                    labelColor = Color(0xFF94A3B8)
+                                )
+                            )
+                        }
+
+                        items(EmployeeRole.values()) { role ->
+                            val count = state.employees.count { it.role == role }
+                            FilterChip(
+                                selected = selectedRoleFilter == role,
+                                onClick = { selectedRoleFilter = if (selectedRoleFilter == role) null else role },
+                                label = { Text("${role.title.split(" ").last()} ($count)", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF00E5FF),
+                                    selectedLabelColor = Color(0xFF090D16),
+                                    containerColor = Color(0xFF131B2E),
+                                    labelColor = Color(0xFF94A3B8)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                items(displayedEmployees, key = { it.id }) { emp ->
                     val assignedProd = state.products.find { it.id == emp.assignedProductId }
 
                     Card(
@@ -121,10 +193,10 @@ fun EmployeesTab(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Avatar circle with shirt color
+                                // Avatar circle with shirt color & role icon
                                 Box(
                                     modifier = Modifier
-                                        .size(42.dp)
+                                        .size(44.dp)
                                         .clip(CircleShape)
                                         .background(Color(emp.shirtColor))
                                         .border(2.dp, Color(emp.skinTone), CircleShape),
@@ -142,7 +214,7 @@ fun EmployeesTab(
                                         },
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
 
@@ -164,14 +236,23 @@ fun EmployeesTab(
                                             color = Color(0xFF1E293B)
                                         ) {
                                             Text(
-                                                text = "${emp.levelTitle} ${emp.role.title}",
-                                                color = Color(0xFF38BDF8),
+                                                text = "Lvl ${emp.level}",
+                                                color = Color(0xFFFBBF24),
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Text(
+                                        text = emp.specializationTitle,
+                                        color = Color(0xFF38BDF8),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
 
                                     Spacer(modifier = Modifier.height(2.dp))
 
@@ -220,7 +301,55 @@ fun EmployeesTab(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Trait Pill
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(0.5.dp, Color(0xFF334155))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(emp.trait.iconEmoji, fontSize = 12.sp)
+                                    Text(emp.trait.title, color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "• ${emp.trait.description}",
+                                        color = Color(0xFFCBD5E1),
+                                        fontSize = 10.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Live Thought Quote
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF0A0F1D)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(emp.speechBubbleIcon, fontSize = 12.sp)
+                                    Text(
+                                        text = "\"${emp.currentThought}\"",
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 11.sp,
+                                        fontStyle = FontStyle.Italic
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             // Morale and Energy Gauges
                             Row(
@@ -260,7 +389,7 @@ fun EmployeesTab(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             // Assigned Product Indicator
                             Row(
@@ -291,48 +420,61 @@ fun EmployeesTab(
                                 }
                             }
 
-                            // Action buttons row (Raise Salary, Train, Retreat, Fire)
+                            // Quick Action buttons row (Bonus, Coffee, Raise, Train, Retreat, Dismiss)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 OutlinedButton(
-                                    onClick = { onRaiseSalary(emp) },
+                                    onClick = { onBonus(emp) },
+                                    enabled = state.cash >= 250.0 && emp.morale < 95,
                                     modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
                                 ) {
-                                    Text("+Raise", fontSize = 10.sp, color = Color(0xFFFBBF24))
+                                    Text("Bonus ($250)", fontSize = 9.sp, color = Color(0xFF34D399), maxLines = 1)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { onCoffeeBreak(emp) },
+                                    enabled = state.cash >= 40.0 && emp.energy < 85,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                                ) {
+                                    Text("Coffee ($40)", fontSize = 9.sp, color = Color(0xFFF59E0B), maxLines = 1)
                                 }
 
                                 OutlinedButton(
                                     onClick = { onTrainEmployee(emp) },
+                                    enabled = state.cash >= 500.0,
                                     modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
                                 ) {
-                                    Text("Train ($500)", fontSize = 10.sp, color = Color(0xFF38BDF8))
+                                    Text("Train ($500)", fontSize = 9.sp, color = Color(0xFF38BDF8), maxLines = 1)
                                 }
 
                                 OutlinedButton(
                                     onClick = { onSendOnRetreat(emp) },
+                                    enabled = state.cash >= 300.0,
                                     modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
                                 ) {
-                                    Text("Retreat ($300)", fontSize = 10.sp, color = Color(0xFFEC4899))
+                                    Text("Retreat ($300)", fontSize = 9.sp, color = Color(0xFFEC4899), maxLines = 1)
                                 }
 
                                 if (emp.id != "emp_founder") {
                                     IconButton(
                                         onClick = { employeeToFire = emp },
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(30.dp)
                                     ) {
                                         Icon(
                                             Icons.Default.DeleteOutline,
                                             contentDescription = "Dismiss Employee",
                                             tint = Color(0xFFEF4444).copy(alpha = 0.8f),
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }
@@ -418,78 +560,113 @@ fun EmployeesTab(
                         border = BorderStroke(1.dp, Color(0xFF1E293B)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = cand.name,
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = Color(0xFF1E293B)
+                                        ) {
+                                            Text(
+                                                text = "Lvl ${cand.level}",
+                                                color = Color(0xFFFBBF24),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Text(
+                                        text = cand.specializationTitle,
+                                        color = Color(0xFF38BDF8),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = cand.role.description,
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 11.sp
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { onHireCandidate(cand) },
+                                    enabled = canHire,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF00E5FF),
+                                        disabledContainerColor = Color(0xFF1E293B)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("hire_candidate_${cand.id}")
+                                ) {
+                                    Text(
+                                        text = if (!hasDesk) "No Desk" else if (!canAfford) "Need Cash" else "Hire ($%,.0f)".format(cand.hiringCost),
+                                        color = if (canHire) Color(0xFF090D16) else Color(0xFF64748B),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Candidate Trait Perk Pill
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(0.5.dp, Color(0xFF334155))
+                            ) {
                                 Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    Text(cand.trait.iconEmoji, fontSize = 12.sp)
+                                    Text(cand.trait.title, color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     Text(
-                                        text = cand.name,
-                                        color = Color.White,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold
+                                        "• ${cand.trait.description}",
+                                        color = Color(0xFFCBD5E1),
+                                        fontSize = 10.sp
                                     )
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = Color(0xFF1E293B)
-                                    ) {
-                                        Text(
-                                            text = "${cand.levelTitle} ${cand.role.title}",
-                                            color = Color(0xFF38BDF8),
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                        )
-                                    }
                                 }
+                            }
 
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = cand.role.description,
-                                    color = Color(0xFF94A3B8),
-                                    fontSize = 11.sp
-                                )
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                                Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("Skill: ${cand.skill}", color = Color(0xFF34D399), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     Text("Speed: ${cand.speed}", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    Text("Salary: $%,.0f/day".format(cand.dailySalary), color = Color(0xFFCBD5E1), fontSize = 11.sp)
+                                    Text("Output: ${(cand.effectiveProductivity * 100).toInt()}%", color = Color(0xFF00E5FF), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Recruiting Fee: $%,.0f".format(cand.hiringCost),
-                                    color = Color(0xFFFBBF24),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Button(
-                                onClick = { onHireCandidate(cand) },
-                                enabled = canHire,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF00E5FF),
-                                    disabledContainerColor = Color(0xFF1E293B)
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.testTag("hire_candidate_${cand.id}")
-                            ) {
-                                Text(
-                                    text = if (!hasDesk) "No Desk" else if (!canAfford) "Need Cash" else "Hire ($%,.0f)".format(cand.hiringCost),
-                                    color = if (canHire) Color(0xFF090D16) else Color(0xFF64748B),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Salary: $%,.0f/d".format(cand.dailySalary), color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("Fee: $%,.0f".format(cand.hiringCost), color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }

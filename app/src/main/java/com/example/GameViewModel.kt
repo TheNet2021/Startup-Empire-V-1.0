@@ -296,6 +296,78 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         saveGameInternal()
     }
 
+    fun orderPizzaParty() {
+        val state = _gameState.value
+        val cost = 350.0
+        if (state.cash < cost) {
+            showToast("Need $%,.0f to host a company pizza party!".format(cost))
+            return
+        }
+        val updatedEmployees = state.employees.map {
+            it.copy(
+                morale = (it.morale + 30).coerceAtMost(100),
+                energy = (it.energy + 25).coerceAtMost(100)
+            )
+        }
+        _gameState.value = state.copy(
+            cash = state.cash - cost,
+            employees = updatedEmployees,
+            notifications = listOf("🍕 PIZZA PARTY: Company-wide morale boosted +30% and energy +25%!") + state.notifications
+        )
+        showToast("Hosted company pizza party! Team morale soared!")
+        com.example.audio.SoundManager.playConfirm()
+        saveGameInternal()
+    }
+
+    fun giveEmployeeBonus(employee: Employee, amount: Double = 250.0) {
+        val state = _gameState.value
+        if (state.cash < amount) {
+            showToast("Insufficient cash for $%,.0f bonus!".format(amount))
+            return
+        }
+        val updatedEmployees = state.employees.map {
+            if (it.id == employee.id) {
+                it.copy(
+                    morale = 100,
+                    energy = (it.energy + 15).coerceAtMost(100)
+                )
+            } else it
+        }
+        _gameState.value = state.copy(
+            cash = state.cash - amount,
+            employees = updatedEmployees,
+            notifications = listOf("Awarded $%,.0f spot cash bonus to ${employee.name}! Morale is at 100%!".format(amount)) + state.notifications
+        )
+        showToast("Gave $%,.0f bonus to ${employee.name} (100% Morale)!".format(amount))
+        com.example.audio.SoundManager.playConfirm()
+        saveGameInternal()
+    }
+
+    fun giveCoffeeBreak(employee: Employee) {
+        val state = _gameState.value
+        val cost = 40.0
+        if (state.cash < cost) {
+            showToast("Need $40 for artisan coffee run!")
+            return
+        }
+        val updatedEmployees = state.employees.map {
+            if (it.id == employee.id) {
+                it.copy(
+                    energy = (it.energy + 40).coerceAtMost(100),
+                    morale = (it.morale + 10).coerceAtMost(100),
+                    state = EmployeeState.WORKING
+                )
+            } else it
+        }
+        _gameState.value = state.copy(
+            cash = state.cash - cost,
+            employees = updatedEmployees
+        )
+        showToast("Espresso delivered to ${employee.name} (+40 Energy)!")
+        com.example.audio.SoundManager.playClick()
+        saveGameInternal()
+    }
+
     fun fireEmployee(employee: Employee) {
         val state = _gameState.value
         val updatedStaff = state.employees.filter { it.id != employee.id }

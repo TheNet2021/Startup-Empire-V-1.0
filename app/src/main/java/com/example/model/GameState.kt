@@ -214,6 +214,7 @@ data class GameState(
                 dailySalary = 80.0, // Reduced founder salary
                 morale = 95,
                 energy = 95,
+                trait = EmployeeTrait.TEN_X_CODER,
                 assignedProductId = "prod_initial",
                 assignedDeskId = "desk_0",
                 hairColor = 0xFF2D3748,
@@ -233,6 +234,7 @@ data class GameState(
                 dailySalary = 100.0,
                 morale = 85,
                 energy = 90,
+                trait = EmployeeTrait.PIXEL_PERFECT,
                 hairColor = 0xFF1E293B,
                 shirtColor = 0xFFEC4899,
                 skinTone = 0xFFE0AC69
@@ -247,6 +249,7 @@ data class GameState(
                 dailySalary = 120.0,
                 morale = 80,
                 energy = 85,
+                trait = EmployeeTrait.RAPID_LEARNER,
                 hairColor = 0xFF78350F,
                 shirtColor = 0xFF10B981,
                 skinTone = 0xFFFCD34D
@@ -261,6 +264,7 @@ data class GameState(
                 dailySalary = 135.0,
                 morale = 90,
                 energy = 90,
+                trait = EmployeeTrait.DEAL_CLOSER,
                 hairColor = 0xFF4B5563,
                 shirtColor = 0xFF8B5CF6,
                 skinTone = 0xFFFBBF24
@@ -275,6 +279,7 @@ data class GameState(
                 dailySalary = 130.0,
                 morale = 85,
                 energy = 90,
+                trait = EmployeeTrait.CAFFEINE_SAVANT,
                 hairColor = 0xFF0F172A,
                 shirtColor = 0xFFF59E0B,
                 skinTone = 0xFFFFDFBA
